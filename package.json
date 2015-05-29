@@ -15,6 +15,7 @@
     "url": "https://github.com/css-modules/postcss-modules-local-by-default.git"
   },
   "dependencies": {
+    "gonzales": "^1.0.7",
     "postcss": "^4.1.5"
   },
   "devDependencies": {

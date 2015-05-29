@@ -1,4 +1,5 @@
 var postcss = require('postcss');
+var gonzales = require('gonzales');
 
 var ESCAPED_DOT = ' ___LOCAL_SCOPE__ESCAPED_DOT___ ';
 
@@ -24,6 +25,9 @@ function transformSelector(options, rule, selector) {
       }
     }
   }
+
+  var ast = gonzales.srcToCSSP( selector + " {}" );
+  console.log( gonzales.csspToTree(ast))
 
   return selector
     .replace(/\:global\((.*?)\)/g, escapeDots)
