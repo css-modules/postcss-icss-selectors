@@ -6,6 +6,13 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 - Nothing yet.
 
+## [0.0.8] - 2015-06-11
+### Added
+- Pure mode where only local scope is allowed.
+
+### Changed
+- Using global selectors outside of a global context now triggers warnings.
+
 ## [0.0.7] - 2015-05-30
 ### Changed
 - Migrated to `css-selector-tokenizer`.
@@ -38,10 +45,11 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Automatic local classes
 - Explicit global selectors with `:global`
 
-[unreleased]: https://github.com/postcss-modules-local-by-default/compare/v0.0.7...HEAD
+[unreleased]: https://github.com/postcss-modules-local-by-default/compare/v0.0.8...HEAD
 [0.0.2]:      https://github.com/postcss-modules-local-by-default/compare/v0.0.1...v0.0.2
 [0.0.3]:      https://github.com/postcss-modules-local-by-default/compare/v0.0.2...v0.0.3
 [0.0.4]:      https://github.com/postcss-modules-local-by-default/compare/v0.0.3...v0.0.4
 [0.0.5]:      https://github.com/postcss-modules-local-by-default/compare/v0.0.4...v0.0.5
 [0.0.6]:      https://github.com/postcss-modules-local-by-default/compare/v0.0.5...v0.0.6
 [0.0.7]:      https://github.com/postcss-modules-local-by-default/compare/v0.0.6...v0.0.7
+[0.0.8]:      https://github.com/postcss-modules-local-by-default/compare/v0.0.7...v0.0.8

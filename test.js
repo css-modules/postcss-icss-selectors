@@ -345,11 +345,30 @@ var tests = [
     expected: '[type="radio"] {}'
   },
   {
-    should: 'localise class and pass through attribute',
-    input: '.foo :not([type="radio"]) {}',
-    expected: ':local(.foo) :not([type="radio"]) {}'
+    should: 'not modify urls without option',
+    input: '.a { background: url(./image.png); }\n' +
+      ':global .b { background: url(image.png); }\n' +
+      '.c { background: url("./image.png"); }',
+    expected: ':local(.a) { background: url(./image.png); }\n' +
+      '.b { background: url(image.png); }\n' +
+      ':local(.c) { background: url("./image.png"); }'
+  },
+  {
+    should: 'rewrite url in local block',
+    input: '.a { background: url(./image.png); }\n' +
+      ':global .b { background: url(image.png); }\n' +
+      '.c { background: url("./image.png"); }',
+    options: {
+      rewriteUrl: function(global, url) {
+        var mode = global ? 'global' : 'local';
+        return '(' + mode + ')' + url + '"' + mode + '"';
+      }
+    },
+    expected: ':local(.a) { background: url((local\\)./image.png\\\"local\\\"); }\n' +
+      '.b { background: url((global\\)image.png\\\"global\\\"); }\n' +
+      ':local(.c) { background: url(\"(local)./image.png\\\"local\\\"\"); }'
   }
-  
+
 ];
 
 function process (css, options) {
