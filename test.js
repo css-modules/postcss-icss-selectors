@@ -330,30 +330,26 @@ var tests = [
     error: /@keyframes :global\(\.\.\.\) is not allowed in pure mode/
   },
   {
-    should: 'throw on implicit global element',
+    should: 'pass through global element',
     input: 'input {}',
-    error: /'input' must be explicit flagged :global/
+    expected: 'input {}'
   },
   {
-    should: 'throw on implicit global element (with multiple 1)',
-    input: 'input, .foo {}',
-    error: /'input, \.foo' must be explicit flagged :global/
+    should: 'localise class and pass through element',
+    input: '.foo input {}',
+    expected: ':local(.foo) input {}'
   },
   {
-    should: 'throw on implicit global element (with multiple 2)',
-    input: '.foo, input {}',
-    error: /'\.foo, input' must be explicit flagged :global/
-  },
-  {
-    should: 'throw on implicit global attribute',
+    should: 'pass through attribute selector',
     input: '[type="radio"] {}',
-    error: /'\[type="radio"\]' must be explicit flagged :global/
+    expected: '[type="radio"] {}'
   },
   {
-    should: 'throw on implicit global attribute in nested',
-    input: ':not([type="radio"]) {}',
-    error: /':not\(\[type="radio"\]\)' must be explicit flagged :global/
+    should: 'localise class and pass through attribute',
+    input: '.foo :not([type="radio"]) {}',
+    expected: ':local(.foo) :not([type="radio"]) {}'
   }
+  
 ];
 
 function process (css, options) {

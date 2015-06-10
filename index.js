@@ -133,13 +133,6 @@ function localizeNode(node, context) {
       }
       break;
 
-    case "attribute":
-    case "element":
-      if(!context.global && !context.explicit) {
-        context.hasImplicitGlobals = true;
-      }
-      break;
-
     case "id":
     case "class":
       if(!context.global) {
