@@ -214,6 +214,10 @@ module.exports = postcss.plugin('postcss-modules-local-by-default', function (op
       }
     });
     css.eachRule(function(rule) {
+      if(rule.parent.type === "atrule" && /keyframes$/.test(rule.parent.name)) {
+        // ignore keyframe rules
+        return;
+      }
       var selector = Tokenizer.parse(rule.selector);
       var context = {
         options: options,

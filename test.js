@@ -222,8 +222,8 @@ var tests = [
   },
   {
     should: 'localize explicit keyframes',
-    input: '@keyframes :local(foo) { 0% { color: red; } 100% { color: blue; } } @-webkit-keyframes :global(bar) { from { color: red; } to { color: blue; } }',
-    expected: '@keyframes :local(foo) { 0% { color: red; } 100% { color: blue; } } @-webkit-keyframes bar { from { color: red; } to { color: blue; } }'
+    input: '@keyframes :local(foo) { 0% { color: red; } 33.3% { color: yellow; } 100% { color: blue; } } @-webkit-keyframes :global(bar) { from { color: red; } to { color: blue; } }',
+    expected: '@keyframes :local(foo) { 0% { color: red; } 33.3% { color: yellow; } 100% { color: blue; } } @-webkit-keyframes bar { from { color: red; } to { color: blue; } }'
   },
   {
     should: 'ignore :export statements',
