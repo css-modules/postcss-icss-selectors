@@ -211,7 +211,7 @@ module.exports = postcss.plugin('postcss-modules-local-by-default', function (op
         } else if(!globalMode) {
           atrule.params = ":local(" + atrule.params + ")";
         }
-      } else {
+      } else if(atrule.nodes) {
         atrule.nodes.forEach(function(decl) {
           if(decl.type === "decl") {
             localizeDecl(decl, {
