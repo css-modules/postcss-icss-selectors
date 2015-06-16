@@ -357,7 +357,8 @@ var tests = [
     should: 'rewrite url in local block',
     input: '.a { background: url(./image.png); }\n' +
       ':global .b { background: url(image.png); }\n' +
-      '.c { background: url("./image.png"); }',
+      '.c { background: url("./image.png"); }\n' +
+      '@-webkit-font-face { src: url("./font.woff"); }',
     options: {
       rewriteUrl: function(global, url) {
         var mode = global ? 'global' : 'local';
@@ -366,7 +367,8 @@ var tests = [
     },
     expected: ':local(.a) { background: url((local\\)./image.png\\\"local\\\"); }\n' +
       '.b { background: url((global\\)image.png\\\"global\\\"); }\n' +
-      ':local(.c) { background: url(\"(local)./image.png\\\"local\\\"\"); }'
+      ':local(.c) { background: url(\"(local)./image.png\\\"local\\\"\"); }\n' +
+      '@-webkit-font-face { src: url(\"(local)./font.woff\\\"local\\\"\"); }'
   }
 
 ];
