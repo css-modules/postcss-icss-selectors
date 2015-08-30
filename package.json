@@ -19,7 +19,7 @@
     "postcss": "^4.1.5"
   },
   "devDependencies": {
-    "chokidar-cli": "^0.2.1",
+    "chokidar-cli": "^1.0.1",
     "codecov.io": "^0.1.2",
     "coveralls": "^2.11.2",
     "eslint": "^0.22.1",
