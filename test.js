@@ -195,6 +195,11 @@ var tests = [
     expected: ':local(.foo) { animation: 1s infinite :local(infinite); }'
   },
   {
+    should: 'handle not localize an animation shorthand value of "inherit"',
+    input: '.foo { animation: inherit; }',
+    expected: ':local(.foo) { animation: inherit; }'
+  },
+  {
     should: 'default to global when mode provided',
     input: '.foo {}',
     options: { mode: 'global' },

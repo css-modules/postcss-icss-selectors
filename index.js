@@ -185,6 +185,17 @@ function localizeDeclValue(valueNode, context) {
 function localizeAnimationShorthandDeclValueNodes(nodes, context) {
   var validIdent = validIdent = /^-?[_a-z][_a-z0-9-]*$/i;
 
+  /*
+  The spec defines some keywords that you can use to describe properties such as the timing
+  function. These are still valid animation names, so as long as there is a property that accepts
+  a keyword, it is given priority. Only when all the properties that can take a keyword are
+  exhausted can the animation name be set to the keyword. I.e.
+
+  animation: infinite infinite;
+
+  The animation will repeat an infinite number of times from the first argument, and will have an
+  animation name of infinite from the second.
+  */
   var animationKeywords = {
     'alternate': 1,
     'alternate-reverse': 1,
@@ -197,13 +208,16 @@ function localizeAnimationShorthandDeclValueNodes(nodes, context) {
     'forwards': 1,
     'infinite': 1,
     'linear': 1,
-    'none': 2,
+    'none': Infinity, // No matter how many times you write none, it will never be an animation name
     'normal': 1,
     'paused': 1,
     'reverse': 1,
     'running': 1,
     'step-end': 1,
     'step-start': 1,
+    'initial': Infinity,
+    'inherit': Infinity,
+    'unset': Infinity,
   };
 
   var didParseAnimationName = false;
