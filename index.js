@@ -197,27 +197,27 @@ function localizeAnimationShorthandDeclValueNodes(nodes, context) {
   animation name of infinite from the second.
   */
   var animationKeywords = {
-    'alternate': 1,
-    'alternate-reverse': 1,
-    'backwards': 1,
-    'both': 1,
-    'ease': 1,
-    'ease-in': 1,
-    'ease-in-out': 1,
-    'ease-out': 1,
-    'forwards': 1,
-    'infinite': 1,
-    'linear': 1,
-    'none': Infinity, // No matter how many times you write none, it will never be an animation name
-    'normal': 1,
-    'paused': 1,
-    'reverse': 1,
-    'running': 1,
-    'step-end': 1,
-    'step-start': 1,
-    'initial': Infinity,
-    'inherit': Infinity,
-    'unset': Infinity,
+    '$alternate': 1,
+    '$alternate-reverse': 1,
+    '$backwards': 1,
+    '$both': 1,
+    '$ease': 1,
+    '$ease-in': 1,
+    '$ease-in-out': 1,
+    '$ease-out': 1,
+    '$forwards': 1,
+    '$infinite': 1,
+    '$linear': 1,
+    '$none': Infinity, // No matter how many times you write none, it will never be an animation name
+    '$normal': 1,
+    '$paused': 1,
+    '$reverse': 1,
+    '$running': 1,
+    '$step-end': 1,
+    '$step-start': 1,
+    '$initial': Infinity,
+    '$inherit': Infinity,
+    '$unset': Infinity,
   };
 
   var didParseAnimationName = false;
@@ -230,12 +230,12 @@ function localizeAnimationShorthandDeclValueNodes(nodes, context) {
     var shouldParseAnimationName = false;
 
     if (!didParseAnimationName && value && validIdent.test(value)) {
-      if (value in animationKeywords) {
-        parsedAnimationKeywords[value] = (value in parsedAnimationKeywords)
-          ? (parsedAnimationKeywords[value] + 1)
+      if ('$' + value in animationKeywords) {
+        parsedAnimationKeywords['$' + value] = ('$' + value in parsedAnimationKeywords)
+          ? (parsedAnimationKeywords['$' + value] + 1)
           : 0;
 
-        shouldParseAnimationName = (parsedAnimationKeywords[value] >= animationKeywords[value]);
+        shouldParseAnimationName = (parsedAnimationKeywords['$' + value] >= animationKeywords['$' + value]);
       } else {
         shouldParseAnimationName = true;
       }

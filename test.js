@@ -200,6 +200,11 @@ var tests = [
     expected: ':local(.foo) { animation: inherit; }'
   },
   {
+    should: 'handle "constructor" as animation name',
+    input: '.foo { animation: constructor constructor; }',
+    expected: ':local(.foo) { animation: :local(constructor) :local(constructor); }'
+  },
+  {
     should: 'default to global when mode provided',
     input: '.foo {}',
     options: { mode: 'global' },
