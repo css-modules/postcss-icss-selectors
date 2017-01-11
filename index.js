@@ -324,7 +324,7 @@ module.exports = postcss.plugin('postcss-modules-local-by-default', function (op
         atrule.nodes.forEach(function(decl) {
           if(decl.type === 'decl') {
             localizeDecl(decl, {
-              options: options,
+              options: options || {},
               global: globalMode
             });
           }
