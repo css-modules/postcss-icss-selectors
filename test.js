@@ -1,9 +1,7 @@
-var test = require('tape');
-var postcss = require('postcss');
-var plugin = require('./');
-var name = require('./package.json').name;
+const postcss = require('postcss')
+const plugin = require('./src')
 
-var tests = [
+const tests = [
   {
     should: 'scope selectors',
     input: '.foobar {}',
@@ -401,16 +399,16 @@ var tests = [
       '@keyframes ani2 { 0% { src: url("./image.png"); } }',
     options: {
       rewriteUrl: function(global, url) {
-        var mode = global ? 'global' : 'local';
-        return '(' + mode + ')' + url + '"' + mode + '"';
+        var mode = global ? 'global' : 'local'
+        return '(' + mode + ')' + url + '"' + mode + '"'
       }
     },
-    expected: ':local(.a) { background: url((local\\)./image.png\\\"local\\\"); }\n' +
-      '.b { background: url((global\\)image.png\\\"global\\\"); }\n' +
-      ':local(.c) { background: url(\"(local)./image.png\\\"local\\\"\"); }\n' +
-      ':local(.d) { background: -webkit-image-set(url(\"(local)./image.png\\\"local\\\"\") 1x, url(\"(local)./image2x.png\\\"local\\\"\") 2x); }\n' +
-      '@font-face { src: url(\"(local)./font.woff\\\"local\\\"\"); }\n' +
-      '@-webkit-font-face { src: url(\"(local)./font.woff\\\"local\\\"\"); }\n' +
+    expected: ':local(.a) { background: url((local\\)./image.png\\"local\\"); }\n' +
+      '.b { background: url((global\\)image.png\\"global\\"); }\n' +
+      ':local(.c) { background: url("(local)./image.png\\"local\\""); }\n' +
+      ':local(.d) { background: -webkit-image-set(url("(local)./image.png\\"local\\"") 1x, url("(local)./image2x.png\\"local\\"") 2x); }\n' +
+      '@font-face { src: url("(local)./font.woff\\"local\\""); }\n' +
+      '@-webkit-font-face { src: url("(local)./font.woff\\"local\\""); }\n' +
       '@media screen { :local(.a) { src: url("(local)./image.png\\"local\\""); } }\n' +
       '@keyframes ani1 { 0% { src: url("(global)image.png\\"global\\""); } }\n' +
       '@keyframes :local(ani2) { 0% { src: url("(local)./image.png\\"local\\""); } }'
@@ -423,40 +421,33 @@ var tests = [
   {
     should: 'not crash on a rule without nodes',
     input: (function() {
-      var inner = postcss.rule({ selector: '.b', ruleWithoutBody: true });
-      var outer = postcss.rule({ selector: '.a' }).push(inner);
-      var root = postcss.root().push(outer);
-      inner.nodes = undefined;
-      return root;
+      var inner = postcss.rule({ selector: '.b', ruleWithoutBody: true })
+      var outer = postcss.rule({ selector: '.a' }).push(inner)
+      var root = postcss.root().push(outer)
+      inner.nodes = undefined
+      return root
     })(),
     // postcss-less's stringify would honor `ruleWithoutBody` and omit the trailing `{}`
     expected: ':local(.a) {\n    :local(.b) {}\n}'
   }
+]
 
-];
+const run = (css, options) =>
+  postcss(plugin(options))
+    .process(css)
+    .then(result => result.css)
+    .catch(e => Promise.reject(e.message))
 
-function process (css, options) {
-    return postcss(plugin(options)).process(css).css;
-}
-
-test(name, function (t) {
-    t.plan(tests.length);
-
-    tests.forEach(function (testCase) {
-        var options = testCase.options;
-        if(testCase.error) {
-          t.throws(function() {
-            process(testCase.input, options);
-          }, testCase.error, 'should ' + testCase.should);
-        } else {
-          t.equal(process(testCase.input, options), testCase.expected, 'should ' + testCase.should);
-        }
-    });
-});
-
-
-test('should use the postcss plugin api', function (t) {
-    t.plan(2);
-    t.ok(plugin().postcssVersion, 'should be able to access version');
-    t.equal(plugin().postcssPlugin, name, 'should be able to access name');
-});
+tests.forEach(testCase => {
+  test(testCase.should, () => {
+    if (testCase.error) {
+      expect(run(testCase.input, testCase.options)).rejects.toMatch(
+        RegExp(testCase.error)
+      )
+    } else {
+      expect(run(testCase.input, testCase.options)).resolves.toEqual(
+        testCase.expected
+      )
+    }
+  })
+})
