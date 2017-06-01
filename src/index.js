@@ -314,10 +314,8 @@ module.exports = postcss.plugin(
       options.mode !== 'local' &&
       options.mode !== 'pure'
     ) {
-      return result.error(
-        Error(
-          'options.mode must be either "global", "local" or "pure" (default "local")'
-        )
+      throw Error(
+        'options.mode must be either "global", "local" or "pure" (default "local")'
       )
     }
     var pureMode = options.mode === 'pure'

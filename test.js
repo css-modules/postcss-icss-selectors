@@ -441,11 +441,11 @@ const run = (css, options) =>
 tests.forEach(testCase => {
   test(testCase.should, () => {
     if (testCase.error) {
-      expect(run(testCase.input, testCase.options)).rejects.toMatch(
+      return expect(run(testCase.input, testCase.options)).rejects.toMatch(
         RegExp(testCase.error)
       )
     } else {
-      expect(run(testCase.input, testCase.options)).resolves.toEqual(
+      return expect(run(testCase.input, testCase.options)).resolves.toEqual(
         testCase.expected
       )
     }
