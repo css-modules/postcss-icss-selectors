@@ -177,14 +177,6 @@ function localizeDeclNode(node, context) {
       node = Object.create(node)
       node.nodes = newNodes
       break
-
-    case 'url':
-      if (context.options && context.options.rewriteUrl) {
-        newNode = Object.create(node)
-        newNode.url = context.options.rewriteUrl(context.global, node.url)
-        return newNode
-      }
-      break
   }
   return node
 }
@@ -344,15 +336,6 @@ module.exports = postcss.plugin(
             options: options,
             global: globalKeyframes
           })
-        })
-      } else if (atrule.nodes) {
-        atrule.nodes.forEach(function(decl) {
-          if (decl.type === 'decl') {
-            localizeDecl(decl, {
-              options: options,
-              global: globalMode
-            })
-          }
         })
       }
     })
