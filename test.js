@@ -1,5 +1,6 @@
-const postcss = require('postcss')
-const plugin = require('./src')
+/* eslint-env jest */
+import postcss from 'postcss'
+import plugin from './src'
 
 const tests = [
   {
@@ -133,76 +134,6 @@ const tests = [
     expected: ':local(.foo) .bar :local(.foobar) :local(.barfoo) {}'
   },
   {
-    should: 'localize a single animation-name',
-    input: '.foo { animation-name: bar; }',
-    expected: ':local(.foo) { animation-name: :local(bar); }'
-  },
-  {
-    should: 'not localize a single animation-delay',
-    input: '.foo { animation-delay: 1s; }',
-    expected: ':local(.foo) { animation-delay: 1s; }'
-  },
-  {
-    should: 'localize multiple animation-names',
-    input: '.foo { animation-name: bar, foobar; }',
-    expected: ':local(.foo) { animation-name: :local(bar), :local(foobar); }'
-  },
-  {
-    should: 'localize animation',
-    input: '.foo { animation: bar 5s, foobar; }',
-    expected: ':local(.foo) { animation: :local(bar) 5s, :local(foobar); }'
-  },
-  {
-    should: 'localize animation with vendor prefix',
-    input: '.foo { -webkit-animation: bar; animation: bar; }',
-    expected: ':local(.foo) { -webkit-animation: :local(bar); animation: :local(bar); }'
-  },
-  {
-    should: 'not localize other rules',
-    input: '.foo { content: "animation: bar;" }',
-    expected: ':local(.foo) { content: "animation: bar;" }'
-  },
-  {
-    should: 'not localize global rules',
-    input: ':global .foo { animation: foo; animation-name: bar; }',
-    expected: '.foo { animation: foo; animation-name: bar; }'
-  },
-  {
-    should: 'handle a complex animation rule',
-    input: '.foo { animation: foo, bar 5s linear 2s infinite alternate, barfoo 1s; }',
-    expected: ':local(.foo) { animation: :local(foo), :local(bar) 5s linear 2s infinite alternate, :local(barfoo) 1s; }'
-  },
-  {
-    should: 'handle animations where the first value is not the animation name',
-    input: '.foo { animation: 1s foo; }',
-    expected: ':local(.foo) { animation: 1s :local(foo); }'
-  },
-  {
-    should: 'handle animations where the first value is not the animation name whilst also using keywords',
-    input: '.foo { animation: 1s normal ease-out infinite foo; }',
-    expected: ':local(.foo) { animation: 1s normal ease-out infinite :local(foo); }'
-  },
-  {
-    should: 'handle animations with custom timing functions',
-    input: '.foo { animation: 1s normal cubic-bezier(0.25, 0.5, 0.5. 0.75) foo; }',
-    expected: ':local(.foo) { animation: 1s normal cubic-bezier(0.25, 0.5, 0.5. 0.75) :local(foo); }'
-  },
-  {
-    should: 'handle animations whose names are keywords',
-    input: '.foo { animation: 1s infinite infinite; }',
-    expected: ':local(.foo) { animation: 1s infinite :local(infinite); }'
-  },
-  {
-    should: 'handle not localize an animation shorthand value of "inherit"',
-    input: '.foo { animation: inherit; }',
-    expected: ':local(.foo) { animation: inherit; }'
-  },
-  {
-    should: 'handle "constructor" as animation name',
-    input: '.foo { animation: constructor constructor; }',
-    expected: ':local(.foo) { animation: :local(constructor) :local(constructor); }'
-  },
-  {
     should: 'default to global when mode provided',
     input: '.foo {}',
     options: { mode: 'global' },
@@ -241,22 +172,6 @@ const tests = [
       ':local(.a) .b {}',
       ':local(.a) .b {}'
     ].join('\n')
-  },
-  {
-    should: 'localize keyframes',
-    input: '@keyframes foo { from { color: red; } to { color: blue; } }',
-    expected: '@keyframes :local(foo) { from { color: red; } to { color: blue; } }'
-  },
-  {
-    should: 'localize keyframes in global default mode',
-    input: '@keyframes foo {}',
-    options: { mode: 'global' },
-    expected: '@keyframes foo {}'
-  },
-  {
-    should: 'localize explicit keyframes',
-    input: '@keyframes :local(foo) { 0% { color: red; } 33.3% { color: yellow; } 100% { color: blue; } } @-webkit-keyframes :global(bar) { from { color: red; } to { color: blue; } }',
-    expected: '@keyframes :local(foo) { 0% { color: red; } 33.3% { color: yellow; } 100% { color: blue; } } @-webkit-keyframes bar { from { color: red; } to { color: blue; } }'
   },
   {
     should: 'ignore :export statements',
@@ -357,12 +272,6 @@ const tests = [
     error: /"\[type="radio"\]" is not pure/
   },
   {
-    should: 'throw on not pure keyframes',
-    input: '@keyframes :global(foo) {}',
-    options: { mode: 'pure' },
-    error: /@keyframes :global\(\.\.\.\) is not allowed in pure mode/
-  },
-  {
     should: 'pass through global element',
     input: 'input {}',
     expected: 'input {}'
@@ -384,7 +293,7 @@ const tests = [
   },
   {
     should: 'not crash on a rule without nodes',
-    input: (function() {
+    input: (() => {
       var inner = postcss.rule({ selector: '.b', ruleWithoutBody: true })
       var outer = postcss.rule({ selector: '.a' }).push(inner)
       var root = postcss.root().push(outer)
@@ -393,6 +302,11 @@ const tests = [
     })(),
     // postcss-less's stringify would honor `ruleWithoutBody` and omit the trailing `{}`
     expected: ':local(.a) {\n    :local(.b) {}\n}'
+  },
+  {
+    should: 'not localize keyframes rules',
+    input: '@keyframes foo { from {} to {} }',
+    expected: '@keyframes foo { from {} to {} }'
   }
 ]
 
