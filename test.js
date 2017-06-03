@@ -378,42 +378,6 @@ const tests = [
     expected: '[type="radio"] {}'
   },
   {
-    should: 'not modify urls without option',
-    input: '.a { background: url(./image.png); }\n' +
-      ':global .b { background: url(image.png); }\n' +
-      '.c { background: url("./image.png"); }',
-    expected: ':local(.a) { background: url(./image.png); }\n' +
-      '.b { background: url(image.png); }\n' +
-      ':local(.c) { background: url("./image.png"); }'
-  },
-  {
-    should: 'rewrite url in local block',
-    input: '.a { background: url(./image.png); }\n' +
-      ':global .b { background: url(image.png); }\n' +
-      '.c { background: url("./image.png"); }\n' +
-      '.d { background: -webkit-image-set(url("./image.png") 1x, url("./image2x.png") 2x); }\n' +
-      '@font-face { src: url("./font.woff"); }\n' +
-      '@-webkit-font-face { src: url("./font.woff"); }\n' +
-      '@media screen { .a { src: url("./image.png"); } }\n' +
-      '@keyframes :global(ani1) { 0% { src: url("image.png"); } }\n' +
-      '@keyframes ani2 { 0% { src: url("./image.png"); } }',
-    options: {
-      rewriteUrl: function(global, url) {
-        var mode = global ? 'global' : 'local'
-        return '(' + mode + ')' + url + '"' + mode + '"'
-      }
-    },
-    expected: ':local(.a) { background: url((local\\)./image.png\\"local\\"); }\n' +
-      '.b { background: url((global\\)image.png\\"global\\"); }\n' +
-      ':local(.c) { background: url("(local)./image.png\\"local\\""); }\n' +
-      ':local(.d) { background: -webkit-image-set(url("(local)./image.png\\"local\\"") 1x, url("(local)./image2x.png\\"local\\"") 2x); }\n' +
-      '@font-face { src: url("(local)./font.woff\\"local\\""); }\n' +
-      '@-webkit-font-face { src: url("(local)./font.woff\\"local\\""); }\n' +
-      '@media screen { :local(.a) { src: url("(local)./image.png\\"local\\""); } }\n' +
-      '@keyframes ani1 { 0% { src: url("(global)image.png\\"global\\""); } }\n' +
-      '@keyframes :local(ani2) { 0% { src: url("(local)./image.png\\"local\\""); } }'
-  },
-  {
     should: 'not crash on atrule without nodes',
     input: '@charset "utf-8";',
     expected: '@charset "utf-8";'
