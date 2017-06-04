@@ -46,6 +46,10 @@ function localizeNode(node, context) {
       context.lastWasSpacing = true;
       return node;
 
+    case "operator":
+      context.lastWasSpacing = true;
+      return node;
+
     case "pseudo-class":
       if (node.name === "local" || node.name === "global") {
         if (context.inside) {
