@@ -6,9 +6,9 @@ const plugin = "postcss-modules-local-by-default";
 
 function normalizeNodeArray(nodes) {
   var array = [];
-  nodes.forEach(function(x) {
+  nodes.forEach(x => {
     if (Array.isArray(x)) {
-      normalizeNodeArray(x).forEach(function(item) {
+      normalizeNodeArray(x).forEach(item => {
         array.push(item);
       });
     } else if (x) {
@@ -29,14 +29,11 @@ function localizeNode(node, context) {
     throw Error(`Missing whitespace before :${context.enforceNoSpacing}`);
   }
 
-  var newNodes;
   switch (node.type) {
     case "selector":
-      newNodes = node.nodes.map(function(n) {
-        return localizeNode(n, context);
-      });
-      node = Object.create(node);
-      node.nodes = normalizeNodeArray(newNodes);
+      node.nodes = normalizeNodeArray(
+        node.nodes.map(n => localizeNode(n, context))
+      );
       break;
 
     case "spacing":
@@ -53,11 +50,7 @@ function localizeNode(node, context) {
       if (node.name === "local" || node.name === "global") {
         if (context.inside) {
           throw Error(
-            "A :" +
-              node.name +
-              " is not allowed inside of a :" +
-              context.inside +
-              "(...)"
+            `A :${node.name} is not allowed inside of a :${context.inside}(...)`
           );
         }
         context.ignoreNextSpacing = context.lastWasSpacing ? node.name : false;
@@ -73,11 +66,7 @@ function localizeNode(node, context) {
       if (node.name === "local" || node.name === "global") {
         if (context.inside) {
           throw Error(
-            "A :" +
-              node.name +
-              "(...) is not allowed inside of a :" +
-              context.inside +
-              "(...)"
+            `A :${node.name}(...) is not allowed inside of a :${context.inside}(...)`
           );
         }
         subContext = {
@@ -86,9 +75,7 @@ function localizeNode(node, context) {
           hasLocals: false,
           explicit: true
         };
-        node = node.nodes.map(function(n) {
-          return localizeNode(n, subContext);
-        });
+        node = node.nodes.map(n => localizeNode(n, subContext));
         // don't leak spacing
         node[0].before = undefined;
         node[node.length - 1].after = undefined;
@@ -100,15 +87,9 @@ function localizeNode(node, context) {
           hasLocals: false,
           explicit: context.explicit
         };
-        newNodes = node.nodes.map(function(n) {
-          return localizeNode(n, subContext);
-        });
-        node = Object.create(node);
-        node.nodes = normalizeNodeArray(newNodes);
+        node.nodes = node.nodes.map(n => localizeNode(n, subContext));
       }
-      if (subContext.hasLocals) {
-        context.hasLocals = true;
-      }
+      context.hasLocals = subContext.hasLocals;
       break;
 
     case "id":
@@ -135,7 +116,7 @@ const localizeSelectors = (selectors, context) => {
   const node = Tokenizer.parse(selectors);
   var resultingGlobal;
   context.hasPureGlobals = false;
-  const newNodes = node.nodes.map(function(n) {
+  node.nodes = node.nodes.map(n => {
     var nContext = {
       global: context.global,
       lastWasSpacing: true,
@@ -147,7 +128,8 @@ const localizeSelectors = (selectors, context) => {
       resultingGlobal = nContext.global;
     } else if (resultingGlobal !== nContext.global) {
       throw Error(
-        `Inconsistent rule global/local result in rule "${Tokenizer.stringify(node)}" (multiple selectors must result in the same mode for the rule)`
+        `Inconsistent rule global/local result in rule "${Tokenizer.stringify(node)}"` +
+          ` (multiple selectors must result in the same mode for the rule)`
       );
     }
     if (!nContext.hasLocals) {
@@ -156,7 +138,6 @@ const localizeSelectors = (selectors, context) => {
     return n;
   });
   context.global = resultingGlobal;
-  node.nodes = normalizeNodeArray(newNodes);
   return Tokenizer.stringify(node);
 };
 
@@ -173,7 +154,7 @@ module.exports = postcss.plugin(plugin, (options = {}) => css => {
   }
   var pureMode = options.mode === "pure";
   var globalMode = options.mode === "global";
-  css.walkRules(function(rule) {
+  css.walkRules(rule => {
     if (rule.parent.type === "atrule" && /keyframes$/.test(rule.parent.name)) {
       // ignore keyframe rules
       return;
