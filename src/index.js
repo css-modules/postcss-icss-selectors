@@ -1,5 +1,6 @@
-var postcss = require('postcss')
-var Tokenizer = require('css-selector-tokenizer')
+/* eslint-env node */
+import postcss from 'postcss'
+import Tokenizer from 'css-selector-tokenizer'
 
 function normalizeNodeArray(nodes) {
   var array = []
@@ -158,148 +159,9 @@ function localizeNode(node, context) {
   return node
 }
 
-function localizeDeclNode(node, context) {
-  var newNode
-  switch (node.type) {
-    case 'item':
-      if (context.localizeNextItem) {
-        newNode = Object.create(node)
-        newNode.name = ':local(' + newNode.name + ')'
-        context.localizeNextItem = false
-        return newNode
-      }
-      break
-
-    case 'nested-item':
-      var newNodes = node.nodes.map(function(n) {
-        return localizeDeclValue(n, context)
-      })
-      node = Object.create(node)
-      node.nodes = newNodes
-      break
-  }
-  return node
-}
-
-function localizeDeclValue(valueNode, context) {
-  var newValueNode = Object.create(valueNode)
-  newValueNode.nodes = valueNode.nodes.map(function(node) {
-    return localizeDeclNode(node, context)
-  })
-  return newValueNode
-}
-
-function localizeAnimationShorthandDeclValueNodes(nodes, context) {
-  var validIdent = (validIdent = /^-?[_a-z][_a-z0-9-]*$/i)
-
-  /*
-  The spec defines some keywords that you can use to describe properties such as the timing
-  function. These are still valid animation names, so as long as there is a property that accepts
-  a keyword, it is given priority. Only when all the properties that can take a keyword are
-  exhausted can the animation name be set to the keyword. I.e.
-
-  animation: infinite infinite;
-
-  The animation will repeat an infinite number of times from the first argument, and will have an
-  animation name of infinite from the second.
-  */
-  var animationKeywords = {
-    $alternate: 1,
-    '$alternate-reverse': 1,
-    $backwards: 1,
-    $both: 1,
-    $ease: 1,
-    '$ease-in': 1,
-    '$ease-in-out': 1,
-    '$ease-out': 1,
-    $forwards: 1,
-    $infinite: 1,
-    $linear: 1,
-    $none: Infinity, // No matter how many times you write none, it will never be an animation name
-    $normal: 1,
-    $paused: 1,
-    $reverse: 1,
-    $running: 1,
-    '$step-end': 1,
-    '$step-start': 1,
-    $initial: Infinity,
-    $inherit: Infinity,
-    $unset: Infinity
-  }
-
-  var didParseAnimationName = false
-  var parsedAnimationKeywords = {}
-  return nodes.map(function(valueNode) {
-    var value = valueNode.type === 'item' ? valueNode.name.toLowerCase() : null
-
-    var shouldParseAnimationName = false
-
-    if (!didParseAnimationName && value && validIdent.test(value)) {
-      if ('$' + value in animationKeywords) {
-        parsedAnimationKeywords['$' + value] = '$' + value in
-          parsedAnimationKeywords
-          ? parsedAnimationKeywords['$' + value] + 1
-          : 0
-
-        shouldParseAnimationName =
-          parsedAnimationKeywords['$' + value] >= animationKeywords['$' + value]
-      } else {
-        shouldParseAnimationName = true
-      }
-    }
-
-    var subContext = {
-      options: context.options,
-      global: context.global,
-      localizeNextItem: shouldParseAnimationName && !context.global
-    }
-    return localizeDeclNode(valueNode, subContext)
-  })
-}
-
-function localizeAnimationShorthandDeclValues(valuesNode, decl, context) {
-  var newValuesNode = Object.create(valuesNode)
-  newValuesNode.nodes = valuesNode.nodes.map(function(valueNode, index) {
-    var newValueNode = Object.create(valueNode)
-    newValueNode.nodes = localizeAnimationShorthandDeclValueNodes(
-      valueNode.nodes,
-      context
-    )
-    return newValueNode
-  })
-  decl.value = Tokenizer.stringifyValues(newValuesNode)
-}
-
-function localizeDeclValues(localize, valuesNode, decl, context) {
-  var newValuesNode = Object.create(valuesNode)
-  newValuesNode.nodes = valuesNode.nodes.map(function(valueNode) {
-    var subContext = {
-      options: context.options,
-      global: context.global,
-      localizeNextItem: localize && !context.global
-    }
-    return localizeDeclValue(valueNode, subContext)
-  })
-  decl.value = Tokenizer.stringifyValues(newValuesNode)
-}
-
-function localizeDecl(decl, context) {
-  var valuesNode = Tokenizer.parseValues(decl.value)
-
-  var isAnimation = /animation?$/.test(decl.prop)
-  if (isAnimation)
-    return localizeAnimationShorthandDeclValues(valuesNode, decl, context)
-
-  var isAnimationName = /animation(-name)?$/.test(decl.prop)
-  if (isAnimationName)
-    return localizeDeclValues(true, valuesNode, decl, context)
-
-  return localizeDeclValues(false, valuesNode, decl, context)
-}
-
 module.exports = postcss.plugin(
   'postcss-modules-local-by-default',
-  (options = {}) => (css, result) => {
+  (options = {}) => css => {
     if (
       options.mode &&
       options.mode !== 'global' &&
@@ -312,33 +174,6 @@ module.exports = postcss.plugin(
     }
     var pureMode = options.mode === 'pure'
     var globalMode = options.mode === 'global'
-    css.walkAtRules(function(atrule) {
-      if (/keyframes$/.test(atrule.name)) {
-        var globalMatch = /^\s*:global\s*\((.+)\)\s*$/.exec(atrule.params)
-        var localMatch = /^\s*:local\s*\((.+)\)\s*$/.exec(atrule.params)
-        var globalKeyframes = globalMode
-        if (globalMatch) {
-          if (pureMode) {
-            throw atrule.error(
-              '@keyframes :global(...) is not allowed in pure mode'
-            )
-          }
-          atrule.params = globalMatch[1]
-          globalKeyframes = true
-        } else if (localMatch) {
-          atrule.params = localMatch[0]
-          globalKeyframes = false
-        } else if (!globalMode) {
-          atrule.params = ':local(' + atrule.params + ')'
-        }
-        atrule.walkDecls(function(decl) {
-          localizeDecl(decl, {
-            options: options,
-            global: globalKeyframes
-          })
-        })
-      }
-    })
     css.walkRules(function(rule) {
       if (
         rule.parent.type === 'atrule' &&
@@ -366,12 +201,6 @@ module.exports = postcss.plugin(
             '" is not pure ' +
             '(pure selectors must contain at least one local class or id)'
         )
-      }
-      // Less-syntax mixins parse as rules with no nodes
-      if (rule.nodes) {
-        rule.nodes.forEach(function(decl) {
-          localizeDecl(decl, context)
-        })
       }
       rule.selector = Tokenizer.stringify(newSelector)
     })
