@@ -49,6 +49,13 @@ test("scope sibling selectors", () => {
   });
 });
 
+test("scope next sibling selectors", () => {
+  return runCSS({
+    fixture: ".foo + .bar {}",
+    expected: ":local(.foo) + :local(.bar) {}"
+  });
+});
+
 test("scope psuedo elements", () => {
   return runCSS({
     fixture: ".foo:after {}",
@@ -67,6 +74,13 @@ test("allow narrow global selectors", () => {
   return runCSS({
     fixture: ":global(.foo .bar) {}",
     expected: ".foo .bar {}"
+  });
+});
+
+test("allow operators before :global", () => {
+  return runCSS({
+    fixture: ".foo > :global .bar {}",
+    expected: ":local(.foo) > .bar {}"
   });
 });
 
