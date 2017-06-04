@@ -2,8 +2,6 @@
 import postcss from 'postcss'
 import Tokenizer from 'css-selector-tokenizer'
 
-const plugin = 'postcss-modules-local-by-default'
-
 function normalizeNodeArray(nodes) {
   var array = []
   nodes.forEach(function(x) {
@@ -161,44 +159,50 @@ function localizeNode(node, context) {
   return node
 }
 
-module.exports = postcss.plugin(plugin, (options = {}) => css => {
-  if (
-    options.mode &&
-    options.mode !== 'global' &&
-    options.mode !== 'local' &&
-    options.mode !== 'pure'
-  ) {
-    throw Error(
-      'options.mode must be either "global", "local" or "pure" (default "local")'
-    )
-  }
-  var pureMode = options.mode === 'pure'
-  var globalMode = options.mode === 'global'
-  css.walkRules(function(rule) {
-    if (rule.parent.type === 'atrule' && /keyframes$/.test(rule.parent.name)) {
-      // ignore keyframe rules
-      return
-    }
-    var selector = Tokenizer.parse(rule.selector)
-    var context = {
-      options: options,
-      global: globalMode,
-      hasPureGlobals: false
-    }
-    var newSelector
-    try {
-      newSelector = localizeNode(selector, context)
-    } catch (e) {
-      throw rule.error(e.message)
-    }
-    if (pureMode && context.hasPureGlobals) {
-      throw rule.error(
-        'Selector "' +
-          Tokenizer.stringify(selector) +
-          '" is not pure ' +
-          '(pure selectors must contain at least one local class or id)'
+module.exports = postcss.plugin(
+  'postcss-modules-local-by-default',
+  (options = {}) => css => {
+    if (
+      options.mode &&
+      options.mode !== 'global' &&
+      options.mode !== 'local' &&
+      options.mode !== 'pure'
+    ) {
+      throw Error(
+        'options.mode must be either "global", "local" or "pure" (default "local")'
       )
     }
-    rule.selector = Tokenizer.stringify(newSelector)
-  })
-})
+    var pureMode = options.mode === 'pure'
+    var globalMode = options.mode === 'global'
+    css.walkRules(function(rule) {
+      if (
+        rule.parent.type === 'atrule' &&
+        /keyframes$/.test(rule.parent.name)
+      ) {
+        // ignore keyframe rules
+        return
+      }
+      var selector = Tokenizer.parse(rule.selector)
+      var context = {
+        options: options,
+        global: globalMode,
+        hasPureGlobals: false
+      }
+      var newSelector
+      try {
+        newSelector = localizeNode(selector, context)
+      } catch (e) {
+        throw rule.error(e.message)
+      }
+      if (pureMode && context.hasPureGlobals) {
+        throw rule.error(
+          'Selector "' +
+            Tokenizer.stringify(selector) +
+            '" is not pure ' +
+            '(pure selectors must contain at least one local class or id)'
+        )
+      }
+      rule.selector = Tokenizer.stringify(newSelector)
+    })
+  }
+)
