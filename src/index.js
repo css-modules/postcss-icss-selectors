@@ -116,13 +116,12 @@ function localizeNode(node, context) {
   return node;
 }
 
-const localizeSelectors = (selectors, context) => {
+const localizeSelectors = (selectors, mode) => {
   const node = Tokenizer.parse(selectors);
   var resultingGlobal;
-  context.hasPureGlobals = false;
   node.nodes = node.nodes.map(n => {
     var nContext = {
-      global: context.global,
+      global: mode === "global",
       lastWasSpacing: true,
       hasLocals: false,
       explicit: false
@@ -136,46 +135,26 @@ const localizeSelectors = (selectors, context) => {
           ` (multiple selectors must result in the same mode for the rule)`
       );
     }
-    if (!nContext.hasLocals) {
-      context.hasPureGlobals = true;
-    }
     return n;
   });
-  context.global = resultingGlobal;
   return Tokenizer.stringify(node);
 };
 
-module.exports = postcss.plugin(plugin, (options = {}) => css => {
-  if (
-    options.mode &&
-    options.mode !== "global" &&
-    options.mode !== "local" &&
-    options.mode !== "pure"
-  ) {
-    throw Error(
-      'options.mode must be either "global", "local" or "pure" (default "local")'
-    );
-  }
-  var pureMode = options.mode === "pure";
-  var globalMode = options.mode === "global";
+const walkRules = (css, callback) => {
   css.walkRules(rule => {
-    if (rule.parent.type === "atrule" && /keyframes$/.test(rule.parent.name)) {
-      // ignore keyframe rules
-      return;
+    if (rule.parent.type !== "atrule" || !/keyframes$/.test(rule.parent.name)) {
+      callback(rule);
     }
-    var context = {
-      options: options,
-      global: globalMode,
-      hasPureGlobals: false
-    };
+  });
+};
+
+module.exports = postcss.plugin(plugin, (options = {}) => css => {
+  walkRules(css, rule => {
     try {
-      const newSelector = localizeSelectors(rule.selector, context);
-      if (pureMode && context.hasPureGlobals) {
-        throw Error(
-          `Selector "${rule.selector}" is not pure (pure selectors must contain at least one local class or id)`
-        );
-      }
-      rule.selector = newSelector;
+      rule.selector = localizeSelectors(
+        rule.selector,
+        options.mode === "global" ? "global" : "local"
+      );
     } catch (e) {
       throw rule.error(e.message);
     }

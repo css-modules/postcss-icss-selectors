@@ -299,14 +299,6 @@ test("compile explict global attribute", () => {
   });
 });
 
-test("throw on invalid mode", () => {
-  return runError({
-    fixture: "",
-    options: { mode: "???" },
-    error: /"global", "local" or "pure"/
-  });
-});
-
 test("throw on inconsistent selector result", () => {
   return runError({
     fixture: ":global .foo, .bar {}",
@@ -353,46 +345,6 @@ test("throw on incorrect spacing with broad :local", () => {
   return runError({
     fixture: ".foo:local .bar {}",
     error: /Missing whitespace before :local/
-  });
-});
-
-test("throw on not pure selector (global class)", () => {
-  return runError({
-    fixture: ":global(.foo) {}",
-    options: { mode: "pure" },
-    error: /":global\(\.foo\)" is not pure/
-  });
-});
-
-test("throw on not pure selector (with multiple 1)", () => {
-  return runError({
-    fixture: ".foo, :global(.bar) {}",
-    options: { mode: "pure" },
-    error: /".foo, :global\(\.bar\)" is not pure/
-  });
-});
-
-test("throw on not pure selector (with multiple 2)", () => {
-  return runError({
-    fixture: ":global(.bar), .foo {}",
-    options: { mode: "pure" },
-    error: /":global\(\.bar\), .foo" is not pure/
-  });
-});
-
-test("throw on not pure selector (element)", () => {
-  return runError({
-    fixture: "input {}",
-    options: { mode: "pure" },
-    error: /"input" is not pure/
-  });
-});
-
-test("throw on not pure selector (attribute)", () => {
-  return runError({
-    fixture: '[type="radio"] {}',
-    options: { mode: "pure" },
-    error: /"\[type="radio"\]" is not pure/
   });
 });
 
