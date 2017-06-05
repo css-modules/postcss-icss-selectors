@@ -118,25 +118,10 @@ function localizeNode(node, context) {
 
 const localizeSelectors = (selectors, mode) => {
   const node = Tokenizer.parse(selectors);
-  var resultingGlobal;
-  node.nodes = node.nodes.map(n => {
-    var nContext = {
-      global: mode === "global",
-      lastWasSpacing: true,
-      hasLocals: false,
-      explicit: false
-    };
-    n = localizeNode(n, nContext);
-    if (typeof resultingGlobal === "undefined") {
-      resultingGlobal = nContext.global;
-    } else if (resultingGlobal !== nContext.global) {
-      throw Error(
-        `Inconsistent rule global/local result in rule "${Tokenizer.stringify(node)}"` +
-          ` (multiple selectors must result in the same mode for the rule)`
-      );
-    }
-    return n;
-  });
+  const global = mode === "global";
+  node.nodes = node.nodes.map(n =>
+    localizeNode(n, { global, lastWasSpacing: true, hasLocals: false })
+  );
   return Tokenizer.stringify(node);
 };
 

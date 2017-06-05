@@ -299,13 +299,6 @@ test("compile explict global attribute", () => {
   });
 });
 
-test("throw on inconsistent selector result", () => {
-  return runError({
-    fixture: ":global .foo, .bar {}",
-    error: /Inconsistent/
-  });
-});
-
 test("throw on nested :locals", () => {
   return runError({
     fixture: ":local(:local(.foo)) {}",
