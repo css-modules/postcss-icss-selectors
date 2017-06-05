@@ -237,7 +237,6 @@ test("use correct spacing", () => {
   return runCSS({
     fixture: `
       .a :local .b {}
-      .a:local.b {}
       .a:local(.b) {}
       .a:local( .b ) {}
       .a :local(.b) {}
@@ -250,7 +249,6 @@ test("use correct spacing", () => {
     options: { mode: "global" },
     expected: `
       .a :local(.b) {}
-      .a:local(.b) {}
       .a:local(.b) {}
       .a:local(.b) {}
       .a :local(.b) {}
@@ -338,6 +336,20 @@ test("throw on incorrect spacing with broad :local", () => {
   return runError({
     fixture: ".foo:local .bar {}",
     error: /Missing whitespace before :local/
+  });
+});
+
+test("throw on incorrect spacing with broad :local on both side", () => {
+  return runError({
+    fixture: ".foo:local.bar {}",
+    error: /Missing whitespace before :local/
+  });
+});
+
+test("throw on incorrect spacing with broad :global on both side", () => {
+  return runError({
+    fixture: ".foo:global.bar {}",
+    error: /Missing whitespace before :global/
   });
 });
 

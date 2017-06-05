@@ -4,125 +4,104 @@ import Tokenizer from "css-selector-tokenizer";
 
 const plugin = "postcss-modules-local-by-default";
 
-function normalizeNodeArray(nodes) {
-  var array = [];
-  nodes.forEach(x => {
-    if (Array.isArray(x)) {
-      normalizeNodeArray(x).forEach(item => {
-        array.push(item);
-      });
-    } else if (x) {
-      array.push(x);
+const trimNodes = nodes => {
+  const firstIndex = nodes.findIndex(node => node.type !== "spacing");
+  const lastIndex = nodes
+    .slice()
+    .reverse()
+    .findIndex(node => node.type !== "spacing");
+  return nodes.slice(firstIndex, nodes.length - lastIndex);
+};
+
+const isSpacing = node => node.type === "spacing" || node.type === "operator";
+
+const isModifier = node =>
+  node.type === "pseudo-class" &&
+  (node.name === "local" || node.name === "global");
+
+function localizeNode(node, { mode, inside }) {
+  const newNodes = node.nodes.reduce((acc, n, index, nodes) => {
+    switch (n.type) {
+      case "spacing":
+        if (isModifier(nodes[index + 1])) {
+          return [...acc, Object.assign({}, n, { value: "" })];
+        }
+        return [...acc, n];
+
+      case "operator":
+        if (isModifier(nodes[index + 1])) {
+          return [...acc, Object.assign({}, n, { after: "" })];
+        }
+        return [...acc, n];
+
+      case "pseudo-class":
+        if (isModifier(n)) {
+          if (inside) {
+            throw Error(
+              `A :${n.name} is not allowed inside of a :${inside}(...)`
+            );
+          }
+          if (index !== 0 && !isSpacing(nodes[index - 1])) {
+            throw Error(`Missing whitespace before :${n.name}`);
+          }
+          if (index !== nodes.length - 1 && !isSpacing(nodes[index + 1])) {
+            throw Error(`Missing whitespace after :${n.name}`);
+          }
+          // set mode
+          mode = n.name;
+          return acc;
+        }
+        return [...acc, n];
+
+      case "nested-pseudo-class":
+        if (n.name === "local" || n.name === "global") {
+          if (inside) {
+            throw Error(
+              `A :${n.name}(...) is not allowed inside of a :${inside}(...)`
+            );
+          }
+          return [
+            ...acc,
+            ...localizeNode(n.nodes[0], { mode: n.name, inside: n.name }).nodes
+          ];
+        } else {
+          return [
+            ...acc,
+            Object.assign({}, n, {
+              nodes: localizeNode(n.nodes[0], { mode, inside }).nodes
+            })
+          ];
+        }
+
+      case "id":
+      case "class":
+        if (mode === "local") {
+          return [
+            ...acc,
+            {
+              type: "nested-pseudo-class",
+              name: "local",
+              nodes: [n]
+            }
+          ];
+        }
+        return [...acc, n];
+
+      default:
+        return [...acc, n];
     }
-  });
-  if (array.length > 0 && array[array.length - 1].type === "spacing") {
-    array.pop();
-  }
-  return array;
-}
+  }, []);
 
-function localizeNode(node, context) {
-  if (context.ignoreNextSpacing && node.type !== "spacing") {
-    throw Error(`Missing whitespace after :${context.ignoreNextSpacing}`);
-  }
-  if (context.enforceNoSpacing && node.type === "spacing") {
-    throw Error(`Missing whitespace before :${context.enforceNoSpacing}`);
-  }
-
-  switch (node.type) {
-    case "selector":
-      node.nodes = normalizeNodeArray(
-        node.nodes.map(n => localizeNode(n, context))
-      );
-      break;
-
-    case "spacing":
-      if (context.ignoreNextSpacing) {
-        context.ignoreNextSpacing = false;
-        context.lastWasSpacing = false;
-        context.enforceNoSpacing = false;
-        return null;
-      }
-      context.lastWasSpacing = true;
-      return node;
-
-    case "operator":
-      context.lastWasSpacing = true;
-      return node;
-
-    case "pseudo-class":
-      if (node.name === "local" || node.name === "global") {
-        if (context.inside) {
-          throw Error(
-            `A :${node.name} is not allowed inside of a :${context.inside}(...)`
-          );
-        }
-        context.ignoreNextSpacing = context.lastWasSpacing ? node.name : false;
-        context.enforceNoSpacing = context.lastWasSpacing ? false : node.name;
-        context.global = node.name === "global";
-        context.explicit = true;
-        return null;
-      }
-      break;
-
-    case "nested-pseudo-class":
-      var subContext;
-      if (node.name === "local" || node.name === "global") {
-        if (context.inside) {
-          throw Error(
-            `A :${node.name}(...) is not allowed inside of a :${context.inside}(...)`
-          );
-        }
-        subContext = {
-          global: node.name === "global",
-          inside: node.name,
-          hasLocals: false,
-          explicit: true
-        };
-        node = node.nodes.map(n => localizeNode(n, subContext));
-        // don't leak spacing
-        node[0].before = undefined;
-        node[node.length - 1].after = undefined;
-      } else {
-        subContext = {
-          global: context.global,
-          inside: context.inside,
-          lastWasSpacing: true,
-          hasLocals: false,
-          explicit: context.explicit
-        };
-        node.nodes = node.nodes.map(n => localizeNode(n, subContext));
-      }
-      context.hasLocals = subContext.hasLocals;
-      break;
-
-    case "id":
-    case "class":
-      if (!context.global) {
-        node = {
-          type: "nested-pseudo-class",
-          name: "local",
-          nodes: [node]
-        };
-        context.hasLocals = true;
-      }
-      break;
-  }
-
-  // reset context
-  context.lastWasSpacing = false;
-  context.ignoreNextSpacing = false;
-  context.enforceNoSpacing = false;
-  return node;
+  return Object.assign({}, node, { nodes: trimNodes(newNodes) });
 }
 
 const localizeSelectors = (selectors, mode) => {
   const node = Tokenizer.parse(selectors);
-  const global = mode === "global";
-  node.nodes = node.nodes.map(n =>
-    localizeNode(n, { global, lastWasSpacing: true, hasLocals: false })
+  return Tokenizer.stringify(
+    Object.assign({}, node, {
+      nodes: node.nodes.map(n => localizeNode(n, { mode }))
+    })
   );
-  return Tokenizer.stringify(node);
 };
 
 const walkRules = (css, callback) => {
