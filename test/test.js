@@ -10,6 +10,9 @@ const compile = (input, options) =>
     .process(input, options)
     .catch(e => Promise.reject(e.message));
 const generateScopedName = name => `__scope__${name}`;
+const messagesPlugin = messages => () => (css, result) => {
+  result.push(...messages);
+};
 
 const runCSS = ({ fixture, expected, options }) => {
   return expect(
@@ -24,6 +27,17 @@ const runError = ({ fixture, error, options }) => {
   return expect(compile(strip(fixture), options)).rejects.toMatch(
     RegExp(error)
   );
+};
+
+const runMessages = ({ fixture, inputMessages, outputMessages, expected }) => {
+  const processor = postcss([
+    messagesPlugin(inputMessages),
+    plugin({ generateScopedName })
+  ]).process(strip(fixture));
+  return processor.then(result => {
+    expect(result.messages).toEqual(outputMessages);
+    expect(result.css).toEqual(strip(expected));
+  });
 };
 
 test("scope selectors", () => {
@@ -655,5 +669,189 @@ test("save :import statemtents", () => {
         foo: __foo
       }
     `
+  });
+});
+
+test("dispatch messages with all locals", () => {
+  return runMessages({
+    fixture: `
+      .foo {}
+      .foo .bar {}
+      :global .baz :local(.zab) {}
+    `,
+    outputMessages: [
+      {
+        plugin: "postcss-icss-selectors",
+        type: "icss-scoped",
+        name: "foo",
+        value: "__scope__foo"
+      },
+      {
+        plugin: "postcss-icss-selectors",
+        type: "icss-scoped",
+        name: "bar",
+        value: "__scope__bar"
+      },
+      {
+        plugin: "postcss-icss-selectors",
+        type: "icss-scoped",
+        name: "zab",
+        value: "__scope__zab"
+      }
+    ]
+  });
+});
+
+test("icss-scoped contract", () => {
+  const inputMessages = [
+    {
+      plugin: "previous-plugin",
+      type: "icss-scoped",
+      name: "foo",
+      value: "__declared__foo"
+    }
+  ];
+  return runMessages({
+    fixture: `
+      :export {
+        foo: __declared__foo
+      }
+      .foo {}
+      .bar {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo;
+        bar: __scope__bar
+      }
+      .__scope__foo {}
+      .__scope__bar {}
+    `,
+    outputMessages: [
+      ...inputMessages,
+      {
+        plugin: "postcss-icss-selectors",
+        type: "warning",
+        text: `'foo' already declared by 'previous-plugin'`
+      },
+      {
+        plugin: "postcss-icss-selectors",
+        type: "icss-scoped",
+        name: "foo",
+        value: "__scope__foo"
+      },
+      {
+        plugin: "postcss-icss-selectors",
+        type: "icss-scoped",
+        name: "bar",
+        value: "__scope__bar"
+      }
+    ]
+  });
+});
+
+test("icss-composed contract", () => {
+  const inputMessages = [
+    {
+      plugin: "previous-plugin",
+      type: "icss-composed",
+      name: "foo",
+      value: "__compose__foo"
+    },
+    {
+      plugin: "previous-plugin",
+      type: "icss-composed",
+      name: "bar",
+      value: "__compose__bar"
+    }
+  ];
+  return runMessages({
+    fixture: `
+      :export {
+        foo: __compose__foo;
+        baz: __declared__baz
+      }
+      .foo {}
+      .bar {}
+      .baz {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo __compose__foo;
+        bar: __scope__bar __compose__bar;
+        baz: __scope__baz
+      }
+      .__scope__foo {}
+      .__scope__bar {}
+      .__scope__baz {}
+    `,
+    inputMessages,
+    outputMessages: [
+      ...inputMessages,
+      {
+        plugin: "postcss-icss-selectors",
+        type: "icss-scoped",
+        name: "foo",
+        value: "__scope__foo"
+      },
+      {
+        plugin: "postcss-icss-selectors",
+        type: "icss-scoped",
+        name: "bar",
+        value: "__scope__bar"
+      },
+      {
+        plugin: "postcss-icss-selectors",
+        type: "icss-scoped",
+        name: "baz",
+        value: "__scope__baz"
+      }
+    ]
+  });
+});
+
+test("icss-value contract", () => {
+  const inputMessages = [
+    {
+      plugin: "previous-plugin",
+      type: "icss-value",
+      name: "foo",
+      value: "__declared__foo"
+    },
+    {
+      plugin: "previous-plugin",
+      type: "icss-value",
+      name: "bar",
+      value: "__declared__bar"
+    }
+  ];
+  return runMessages({
+    fixture: `
+      :export {
+        foo: __declared__foo
+      }
+      .__declared__foo {}
+      .__declared__bar {}
+      .baz {}
+    `,
+    expected: `
+      :export {
+        foo: __declared__foo;
+        baz: __scope__baz
+      }
+      .__declared__foo {}
+      .__declared__bar {}
+      .__scope__baz {}
+    `,
+    inputMessages,
+    outputMessages: [
+      ...inputMessages,
+      {
+        plugin: "postcss-icss-selectors",
+        type: "icss-scoped",
+        name: "baz",
+        value: "__scope__baz"
+      }
+    ]
   });
 });
