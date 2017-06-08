@@ -1,7 +1,7 @@
 {
-  "name": "postcss-modules-local-by-default",
+  "name": "postcss-icss-selectors",
   "version": "1.2.0",
-  "description": "A CSS Modules transform to make local scope the default",
+  "description": "PostCSS plugin for css modules to to local-scope classes and ids",
   "keywords": [
     "css-modules",
     "postcss",
@@ -51,7 +51,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/css-modules/postcss-modules-local-by-default.git"
+    "url": "https://github.com/css-modules/postcss-icss-selectors.git"
   },
   "dependencies": {
     "css-selector-tokenizer": "^0.7.0",
@@ -63,8 +63,6 @@
     "babel-cli": "^6.24.1",
     "babel-jest": "^20.0.3",
     "babel-preset-env": "^1.5.1",
-    "codecov.io": "^0.1.2",
-    "coveralls": "^2.11.2",
     "eslint": "^3.19.0",
     "husky": "^0.13.3",
     "jest": "^20.0.3",

@@ -4,7 +4,7 @@ import Tokenizer from "css-selector-tokenizer";
 import { extractICSS, createICSSRules } from "icss-utils";
 import genericNames from "generic-names";
 
-const plugin = "postcss-modules-local-by-default";
+const plugin = "postcss-icss-selectors";
 
 const trimNodes = nodes => {
   const firstIndex = nodes.findIndex(node => node.type !== "spacing");
