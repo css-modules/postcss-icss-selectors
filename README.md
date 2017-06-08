@@ -1,65 +1,76 @@
-[![Build Status][ci-img]][ci] [![codecov][codecov-img]][codecov] [![npm][npm-img]][npm]
+# postcss-icss-selectors [![Build Status][travis-img]][travis]
 
-# CSS Modules: Local by Default
+[PostCSS]: https://github.com/postcss/postcss
+[travis-img]: https://travis-ci.org/css-modules/postcss-icss-selectors.svg
+[travis]: https://travis-ci.org/css-modules/postcss-icss-selectors
 
-Transformation examples:
+PostCSS plugin for css modules to to local-scope classes and ids
+
+## Usage
+
+```js
+postcss([ require('postcss-icss-selectors')(options) ])
+```
+
+See [PostCSS] docs for examples for your environment.
+
+### Options
+
+#### mode
+
+`local` by default or `global`
+
+In local mode
 
 ```css
-.foo { ... } /* => */ :local(.foo) { ... }
+.foo { ... } /* => */ .file__foo---h63h { ... }
 
-.foo .bar { ... } /* => */ :local(.foo) :local(.bar) { ... }
+.foo .bar { ... } /* => */ .file__foo----h63h .file__bar----h63h { ... }
 
 /* Shorthand global selector */
 
 :global .foo .bar { ... } /* => */ .foo .bar { ... }
 
-.foo :global .bar { ... } /* => */ :local(.foo) .bar { ... }
+.foo :global .bar { ... } /* => */ .file__foo----h63h .bar { ... }
 
 /* Targeted global selector */
 
-:global(.foo) .bar { ... } /* => */ .foo :local(.bar) { ... }
+:global(.foo) .bar { ... } /* => */ .foo .file__bar----h63h { ... }
 
-.foo:global(.bar) { ... } /* => */ :local(.foo).bar { ... }
+.foo:global(.bar) { ... } /* => */ .file__foo----h63h.bar { ... }
 
-.foo :global(.bar) .baz { ... } /* => */ :local(.foo) .bar :local(.baz) { ... }
+.foo :global(.bar) .baz { ... } /* => */ .file__foo----h63h .bar .file__baz----h63h { ... }
 
-.foo:global(.bar) .baz { ... } /* => */ :local(.foo).bar :local(.baz) { ... }
+.foo:global(.bar) .baz { ... } /* => */ .file__foo----h63h.bar .file__baz----h63h { ... }
 ```
 
-## Building
+In global mode
 
-```bash
-$ npm install
-$ npm test
+```css
+.foo { ... } /* => */ .foo { ... }
+
+.foo .bar { ... } /* => */ .foo .bar { ... }
+
+/* Shorthand local selector */
+
+:local .foo :global .bar { ... } /* => */ .file__foo----h63h .bar { ... }
+
+.foo :local .bar { ... } /* => */ .foo .file__foo----h63h { ... }
+
+/* Targeted local selector */
+
+:local(.foo) .bar { ... } /* => */ .file__foo----h63h .bar { ... }
+
+.foo:local(.bar) { ... } /* => */ .foo.file__bar----h63h { ... }
+
 ```
 
- - Build: [![Build Status][ci-img]][ci]
- - Lines: [![coveralls][coveralls-img]][coveralls]
- - Statements: [![codecov][codecov-img]][codecov]
+#### generateScopeName(localName, filepath, css)
 
-## Development
+Converts every new local name in #id or .class defintion to global alias.
+By default returns `[name]__[local]---[hash:base64:5]`.
 
-```bash
-$ npm run autotest
-```
 
 ## License
 
-MIT
-
-## With thanks
-
- - [Tobias Koppers](https://github.com/sokra)
- - [Glen Maddern](https://github.com/geelen)
-
----
-Mark Dalgleish, 2015.
-
-[ci-img]:        https://img.shields.io/travis/css-modules/postcss-modules-local-by-default/master.svg?style=flat-square
-[ci]:            https://travis-ci.org/css-modules/postcss-modules-local-by-default
-[npm-img]:       https://img.shields.io/npm/v/postcss-modules-local-by-default.svg?style=flat-square
-[npm]:           https://www.npmjs.com/package/postcss-modules-local-by-default
-[coveralls-img]: https://img.shields.io/coveralls/css-modules/postcss-modules-local-by-default/master.svg?style=flat-square
-[coveralls]:     https://coveralls.io/r/css-modules/postcss-modules-local-by-default?branch=master
-[codecov-img]:   https://img.shields.io/codecov/c/github/css-modules/postcss-modules-local-by-default/master.svg?style=flat-square
-[codecov]:       https://codecov.io/github/css-modules/postcss-modules-local-by-default?branch=master
+MIT © Mark Dalgleish and Bogdan Chadkin, 2015
