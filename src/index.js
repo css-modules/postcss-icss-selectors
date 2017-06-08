@@ -111,12 +111,17 @@ const walkRules = (css, callback) => {
   });
 };
 
+const addExports = (css, aliases) => {
+  const { icssImports, icssExports } = extractICSS(css);
+  const exports = Object.assign({}, icssExports, aliases);
+  css.prepend(createICSSRules(icssImports, exports));
+};
+
 module.exports = postcss.plugin(plugin, (options = {}) => css => {
   const generateScopedName =
     options.generateScopedName ||
     genericNames("[name]__[local]---[hash:base64:5]");
   const input = (css && css.source && css.source.input) || {};
-  const { icssImports, icssExports } = extractICSS(css);
   const aliases = {};
   const getAlias = name => {
     const alias = generateScopedName(name, input.from, input.css);
@@ -134,7 +139,5 @@ module.exports = postcss.plugin(plugin, (options = {}) => css => {
       throw rule.error(e.message);
     }
   });
-  css.prepend(
-    createICSSRules(icssImports, Object.assign({}, icssExports, aliases))
-  );
+  addExports(css, aliases);
 });
