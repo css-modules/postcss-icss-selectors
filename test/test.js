@@ -621,14 +621,14 @@ test("generates default scoped name", () => {
       strip(`
                 .foo {}
             `),
-      { from: __dirname + "/file.css" }
+      { from: "/path/to/file.css" }
     ).then(result => result.css)
   ).resolves.toEqual(
     strip(`
           :export {
-            foo: file__foo---3gjdp
+            foo: file__foo---2jzU5
           }
-          .file__foo---3gjdp {}
+          .file__foo---2jzU5 {}
         `)
   );
 });
