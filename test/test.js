@@ -1,4 +1,4 @@
-/* eslint-env jest, node */
+/* eslint-env jest */
 import postcss from "postcss";
 import stripIndent from "strip-indent";
 import plugin from "../src";
@@ -617,19 +617,11 @@ test("not localize keyframes rules", () => {
 
 test("generates default scoped name", () => {
   return expect(
-    compile(
-      strip(`
-                .foo {}
-            `),
-      { from: "/path/to/file.css" }
-    ).then(result => result.css)
-  ).resolves.toEqual(
-    strip(`
-          :export {
-            foo: file__foo---2jzU5
-          }
-          .file__foo---2jzU5 {}
-        `)
+    compile(strip(".foo {}"), { from: "/path/to/file.css" }).then(
+      result => result.css
+    )
+  ).resolves.toMatch(
+    /^:export \{\s+foo: file__foo---\w+\s+\}\s+.file__foo---\w+ \{\}$/
   );
 });
 
