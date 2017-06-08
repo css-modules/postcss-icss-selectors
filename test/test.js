@@ -1,17 +1,22 @@
-/* eslint-env jest */
+/* eslint-env jest, node */
 import postcss from "postcss";
 import stripIndent from "strip-indent";
 import plugin from "../src";
 
-const strip = input => stripIndent(input).replace(/^n/, "");
+const strip = input =>
+  stripIndent(input).replace(/^\n/, "").replace(/\s+$/, "");
 const compile = (input, options) =>
   postcss([plugin(options)])
-    .process(input)
+    .process(input, options)
     .catch(e => Promise.reject(e.message));
+const generateScopedName = name => `__scope__${name}`;
 
 const runCSS = ({ fixture, expected, options }) => {
   return expect(
-    compile(strip(fixture), options).then(result => result.css)
+    compile(
+      strip(fixture),
+      Object.assign({ generateScopedName }, options)
+    ).then(result => result.css)
   ).resolves.toEqual(strip(expected));
 };
 
@@ -23,213 +28,421 @@ const runError = ({ fixture, error, options }) => {
 
 test("scope selectors", () => {
   return runCSS({
-    fixture: ".foobar {}",
-    expected: ":local(.foobar) {}"
+    fixture: `
+      .foobar {}
+    `,
+    expected: `
+      :export {
+        foobar: __scope__foobar
+      }
+      .__scope__foobar {}
+    `
   });
 });
 
 test("scope ids", () => {
   return runCSS({
-    fixture: "#foobar {}",
-    expected: ":local(#foobar) {}"
+    fixture: `
+      #foobar {}
+    `,
+    expected: `
+      :export {
+        foobar: __scope__foobar
+      }
+      #__scope__foobar {}
+    `
   });
 });
 
 test("scope multiple selectors", () => {
   return runCSS({
-    fixture: ".foo, .baz {}",
-    expected: ":local(.foo), :local(.baz) {}"
+    fixture: `
+      .foo, .bar {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo;
+        bar: __scope__bar
+      }
+      .__scope__foo, .__scope__bar {}
+    `
   });
 });
 
 test("scope sibling selectors", () => {
   return runCSS({
-    fixture: ".foo ~ .baz {}",
-    expected: ":local(.foo) ~ :local(.baz) {}"
+    fixture: `
+      .foo ~ .bar {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo;
+        bar: __scope__bar
+      }
+      .__scope__foo ~ .__scope__bar {}
+    `
   });
 });
 
 test("scope next sibling selectors", () => {
   return runCSS({
-    fixture: ".foo + .bar {}",
-    expected: ":local(.foo) + :local(.bar) {}"
+    fixture: `
+      .foo + .bar {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo;
+        bar: __scope__bar
+      }
+      .__scope__foo + .__scope__bar {}
+    `
   });
 });
 
 test("scope psuedo elements", () => {
   return runCSS({
-    fixture: ".foo:after {}",
-    expected: ":local(.foo):after {}"
+    fixture: `
+      .foo:after {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo
+      }
+      .__scope__foo:after {}
+    `
   });
 });
 
 test("scope media queries", () => {
   return runCSS({
-    fixture: "@media only screen { .foo {} }",
-    expected: "@media only screen { :local(.foo) {} }"
+    fixture: `
+      @media only screen { .foo {} }
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo
+      } @media only screen { .__scope__foo {} }
+    `
   });
 });
 
 test("allow narrow global selectors", () => {
   return runCSS({
-    fixture: ":global(.foo .bar) {}",
-    expected: ".foo .bar {}"
+    fixture: `
+      :global(.foo .bar) {}
+    `,
+    expected: `
+      .foo .bar {}
+    `
   });
 });
 
 test("allow operators before :global", () => {
   return runCSS({
-    fixture: ".foo > :global .bar {}",
-    expected: ":local(.foo) > .bar {}"
+    fixture: `
+      .foo > :global .bar {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo
+      }
+      .__scope__foo > .bar {}
+    `
   });
 });
 
 test("allow narrow local selectors", () => {
   return runCSS({
-    fixture: ":local(.foo .bar) {}",
-    expected: ":local(.foo) :local(.bar) {}"
+    fixture: `
+      :local(.foo .bar) {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo;
+        bar: __scope__bar
+      }
+      .__scope__foo .__scope__bar {}
+    `
   });
 });
 
 test("allow broad global selectors", () => {
   return runCSS({
-    fixture: ":global .foo .bar {}",
-    expected: ".foo .bar {}"
+    fixture: `
+      :global .foo .bar {}
+    `,
+    expected: `
+      .foo .bar {}
+    `
   });
 });
 
 test("allow broad local selectors", () => {
   return runCSS({
-    fixture: ":local .foo .bar {}",
-    expected: ":local(.foo) :local(.bar) {}"
+    fixture: `
+      :local .foo .bar {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo;
+        bar: __scope__bar
+      }
+      .__scope__foo .__scope__bar {}
+    `
   });
 });
 
 test("allow multiple narrow global selectors", () => {
   return runCSS({
-    fixture: ":global(.foo), :global(.bar) {}",
-    expected: ".foo, .bar {}"
+    fixture: `
+      :global(.foo), :global(.bar) {}
+    `,
+    expected: `
+      .foo, .bar {}
+    `
   });
 });
 
 test("allow multiple broad global selectors", () => {
   return runCSS({
-    fixture: ":global .foo, :global .bar {}",
-    expected: ".foo, .bar {}"
+    fixture: `
+      :global .foo, :global .bar {}
+    `,
+    expected: `
+      .foo, .bar {}
+    `
   });
 });
 
 test("allow multiple broad local selectors", () => {
   return runCSS({
-    fixture: ":local .foo, :local .bar {}",
-    expected: ":local(.foo), :local(.bar) {}"
+    fixture: `
+      :local .foo, :local .bar {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo;
+        bar: __scope__bar
+      }
+      .__scope__foo, .__scope__bar {}
+    `
   });
 });
 
 test("allow narrow global selectors nested inside local styles", () => {
   return runCSS({
-    fixture: ".foo :global(.foo .bar) {}",
-    expected: ":local(.foo) .foo .bar {}"
+    fixture: `
+      .foo :global(.foo .bar) {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo
+      }
+      .__scope__foo .foo .bar {}
+    `
   });
 });
 
 test("allow broad global selectors nested inside local styles", () => {
   return runCSS({
-    fixture: ".foo :global .foo .bar {}",
-    expected: ":local(.foo) .foo .bar {}"
+    fixture: `
+      .foo :global .foo .bar {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo
+      }
+      .__scope__foo .foo .bar {}
+    `
   });
 });
 
 test("allow parentheses inside narrow global selectors", () => {
   return runCSS({
-    fixture: ".foo :global(.foo:not(.bar)) {}",
-    expected: ":local(.foo) .foo:not(.bar) {}"
+    fixture: `
+      .foo :global(.foo:not(.bar)) {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo
+      }
+      .__scope__foo .foo:not(.bar) {}
+    `
   });
 });
 
 test("allow parentheses inside narrow local selectors", () => {
   return runCSS({
-    fixture: ".foo :local(.foo:not(.bar)) {}",
-    expected: ":local(.foo) :local(.foo):not(:local(.bar)) {}"
+    fixture: `
+      .foo :local(.foo:not(.bar)) {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo;
+        bar: __scope__bar
+      }
+      .__scope__foo .__scope__foo:not(.__scope__bar) {}
+    `
   });
 });
 
 test("allow narrow global selectors appended to local styles", () => {
   return runCSS({
-    fixture: ".foo:global(.foo.bar) {}",
-    expected: ":local(.foo).foo.bar {}"
+    fixture: `
+      .foo:global(.foo.bar) {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo
+      }
+      .__scope__foo.foo.bar {}
+    `
   });
 });
 
-test("ignore selectors that are already local", () => {
+test("convert selectors with local nested pseudo class", () => {
   return runCSS({
-    fixture: ":local(.foobar) {}",
-    expected: ":local(.foobar) {}"
+    fixture: `
+      :local(.foo) {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo
+      }
+      .__scope__foo {}
+    `
   });
 });
 
-test("ignore nested selectors that are already local", () => {
+test("convert nested selectors with local nested pseudo class", () => {
   return runCSS({
-    fixture: ":local(.foo) :local(.bar) {}",
-    expected: ":local(.foo) :local(.bar) {}"
+    fixture: `
+      :local(.foo) :local(.bar) {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo;
+        bar: __scope__bar
+      }
+      .__scope__foo .__scope__bar {}
+    `
   });
 });
 
-test("ignore multiple selectors that are already local", () => {
+test("convert multiple selectors with local nested pseudo class", () => {
   return runCSS({
-    fixture: ":local(.foo), :local(.bar) {}",
-    expected: ":local(.foo), :local(.bar) {}"
+    fixture: `
+      :local(.foo), :local(.bar) {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo;
+        bar: __scope__bar
+      }
+      .__scope__foo, .__scope__bar {}
+    `
   });
 });
 
-test("ignore sibling selectors that are already local", () => {
+test("convert sibling selectors with local nested pseudo class", () => {
   return runCSS({
-    fixture: ":local(.foo) ~ :local(.bar) {}",
-    expected: ":local(.foo) ~ :local(.bar) {}"
+    fixture: `
+      :local(.foo) ~ :local(.bar) {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo;
+        bar: __scope__bar
+      }
+      .__scope__foo ~ .__scope__bar {}
+    `
   });
 });
 
-test("ignore psuedo elements that are already local", () => {
+test("convert psuedo elements with local nested pseudo class", () => {
   return runCSS({
-    fixture: ":local(.foo):after {}",
-    expected: ":local(.foo):after {}"
+    fixture: `
+      :local(.foo):after {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo
+      }
+      .__scope__foo:after {}
+    `
   });
 });
 
 test("broad global should be limited to selector", () => {
   return runCSS({
-    fixture: ":global .foo, .bar :global, .foobar :global {}",
-    expected: ".foo, :local(.bar), :local(.foobar) {}"
+    fixture: `
+      :global .foo, .bar :global, .foobar :global {}
+    `,
+    expected: `
+      :export {
+        bar: __scope__bar;
+        foobar: __scope__foobar
+      }
+      .foo, .__scope__bar, .__scope__foobar {}
+    `
   });
 });
 
 test("broad global should be limited to nested selector", () => {
   return runCSS({
-    fixture: ".foo:not(:global .bar).foobar {}",
-    expected: ":local(.foo):not(.bar):local(.foobar) {}"
+    fixture: `
+      .foo:not(:global .bar).foobar {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo;
+        foobar: __scope__foobar
+      }
+      .__scope__foo:not(.bar).__scope__foobar {}
+    `
   });
 });
 
 test("broad global and local should allow switching", () => {
   return runCSS({
-    fixture: ".foo :global .bar :local .foobar :local .barfoo {}",
-    expected: ":local(.foo) .bar :local(.foobar) :local(.barfoo) {}"
+    fixture: `
+      .foo :global .bar :local .foobar :local .barfoo {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo;
+        foobar: __scope__foobar;
+        barfoo: __scope__barfoo
+      }
+      .__scope__foo .bar .__scope__foobar .__scope__barfoo {}
+    `
   });
 });
 
 test("default to global when mode provided", () => {
   return runCSS({
-    fixture: ".foo {}",
+    fixture: `
+      .foo {}
+    `,
     options: { mode: "global" },
-    expected: ".foo {}"
+    expected: `
+      .foo {}
+    `
   });
 });
 
 test("default to local when mode provided", () => {
   return runCSS({
-    fixture: ".foo {}",
+    fixture: `
+      .foo {}
+    `,
     options: { mode: "local" },
-    expected: ":local(.foo) {}"
+    expected: `
+      :export {
+        foo: __scope__foo
+      }
+      .__scope__foo {}
+    `
   });
 });
 
@@ -248,45 +461,31 @@ test("use correct spacing", () => {
     `,
     options: { mode: "global" },
     expected: `
-      .a :local(.b) {}
-      .a:local(.b) {}
-      .a:local(.b) {}
-      .a :local(.b) {}
-      .a :local(.b) {}
-      :local(.a).b {}
-      :local(.a).b {}
-      :local(.a) .b {}
-      :local(.a) .b {}
+      :export {
+        b: __scope__b;
+        a: __scope__a
+      }
+      .a .__scope__b {}
+      .a.__scope__b {}
+      .a.__scope__b {}
+      .a .__scope__b {}
+      .a .__scope__b {}
+      .__scope__a.b {}
+      .__scope__a.b {}
+      .__scope__a .b {}
+      .__scope__a .b {}
     `
-  });
-});
-
-test("ignore :export statements", () => {
-  return runCSS({
-    fixture: ":export { foo: __foo; }",
-    expected: ":export { foo: __foo; }"
-  });
-});
-
-test("ignore :import statemtents", () => {
-  return runCSS({
-    fixture: ':import("~/lol.css") { foo: __foo; }',
-    expected: ':import("~/lol.css") { foo: __foo; }'
-  });
-});
-
-test("compile in pure mode", () => {
-  return runCSS({
-    fixture: ':global(.foo).bar, [type="radio"] ~ .label, :not(.foo), #bar {}',
-    options: { mode: "pure" },
-    expected: '.foo:local(.bar), [type="radio"] ~ :local(.label), :not(:local(.foo)), :local(#bar) {}'
   });
 });
 
 test("compile explict global element", () => {
   return runCSS({
-    fixture: ":global(input) {}",
-    expected: "input {}"
+    fixture: `
+      :global(input) {}
+    `,
+    expected: `
+      input {}
+    `
   });
 });
 
@@ -362,8 +561,15 @@ test("pass through global element", () => {
 
 test("localise class and pass through element", () => {
   return runCSS({
-    fixture: ".foo input {}",
-    expected: ":local(.foo) input {}"
+    fixture: `
+      .foo input {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo
+      }
+      .__scope__foo input {}
+    `
   });
 });
 
@@ -387,8 +593,18 @@ test("not crash on a rule without nodes", () => {
   const root = postcss.root().push(outer);
   inner.nodes = undefined;
   // postcss-less's stringify would honor `ruleWithoutBody` and omit the trailing `{}`
-  return expect(compile(root).then(result => result.css)).resolves.toEqual(
-    ":local(.a) {\n    :local(.b) {}\n}"
+  return expect(
+    compile(root, { generateScopedName }).then(result => result.css)
+  ).resolves.toEqual(
+    strip(`
+      :export {
+        a: __scope__a;
+        b: __scope__b
+      }
+      .__scope__a {
+        .__scope__b {}
+      }
+    `)
   );
 });
 
@@ -396,5 +612,56 @@ test("not localize keyframes rules", () => {
   return runCSS({
     fixture: "@keyframes foo { from {} to {} }",
     expected: "@keyframes foo { from {} to {} }"
+  });
+});
+
+test("generates default scoped name", () => {
+  return expect(
+    compile(
+      strip(`
+                .foo {}
+            `),
+      { from: __dirname + "/file.css" }
+    ).then(result => result.css)
+  ).resolves.toEqual(
+    strip(`
+          :export {
+            foo: file__foo---3gjdp
+          }
+          .file__foo---3gjdp {}
+        `)
+  );
+});
+
+test("reuse :export statements", () => {
+  return runCSS({
+    fixture: `
+      :export {
+        foo: __foo
+      }
+      .bar {}
+    `,
+    expected: `
+      :export {
+        foo: __foo;
+        bar: __scope__bar
+      }
+      .__scope__bar {}
+    `
+  });
+});
+
+test("save :import statemtents", () => {
+  return runCSS({
+    fixture: `
+      :import("~/lol.css") {
+        foo: __foo
+      }
+    `,
+    expected: `
+      :import("~/lol.css") {
+        foo: __foo
+      }
+    `
   });
 });

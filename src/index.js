@@ -1,6 +1,8 @@
 /* eslint-env node */
 import postcss from "postcss";
 import Tokenizer from "css-selector-tokenizer";
+import { extractICSS, createICSSRules } from "icss-utils";
+import genericNames from "generic-names";
 
 const plugin = "postcss-modules-local-by-default";
 
@@ -19,7 +21,7 @@ const isModifier = node =>
   node.type === "pseudo-class" &&
   (node.name === "local" || node.name === "global");
 
-function localizeNode(node, { mode, inside }) {
+function localizeNode(node, { mode, inside, getAlias }) {
   const newNodes = node.nodes.reduce((acc, n, index, nodes) => {
     switch (n.type) {
       case "spacing":
@@ -62,13 +64,17 @@ function localizeNode(node, { mode, inside }) {
           }
           return [
             ...acc,
-            ...localizeNode(n.nodes[0], { mode: n.name, inside: n.name }).nodes
+            ...localizeNode(n.nodes[0], {
+              mode: n.name,
+              inside: n.name,
+              getAlias
+            }).nodes
           ];
         } else {
           return [
             ...acc,
             Object.assign({}, n, {
-              nodes: localizeNode(n.nodes[0], { mode, inside }).nodes
+              nodes: localizeNode(n.nodes[0], { mode, inside, getAlias }).nodes
             })
           ];
         }
@@ -76,14 +82,7 @@ function localizeNode(node, { mode, inside }) {
       case "id":
       case "class":
         if (mode === "local") {
-          return [
-            ...acc,
-            {
-              type: "nested-pseudo-class",
-              name: "local",
-              nodes: [n]
-            }
-          ];
+          return [...acc, Object.assign({}, n, { name: getAlias(n.name) })];
         }
         return [...acc, n];
 
@@ -95,11 +94,11 @@ function localizeNode(node, { mode, inside }) {
   return Object.assign({}, node, { nodes: trimNodes(newNodes) });
 }
 
-const localizeSelectors = (selectors, mode) => {
+const localizeSelectors = (selectors, mode, getAlias) => {
   const node = Tokenizer.parse(selectors);
   return Tokenizer.stringify(
     Object.assign({}, node, {
-      nodes: node.nodes.map(n => localizeNode(n, { mode }))
+      nodes: node.nodes.map(n => localizeNode(n, { mode, getAlias }))
     })
   );
 };
@@ -113,14 +112,29 @@ const walkRules = (css, callback) => {
 };
 
 module.exports = postcss.plugin(plugin, (options = {}) => css => {
+  const generateScopedName =
+    options.generateScopedName ||
+    genericNames("[name]__[local]---[hash:base64:5]");
+  const input = (css && css.source && css.source.input) || {};
+  const { icssImports, icssExports } = extractICSS(css);
+  const aliases = {};
+  const getAlias = name => {
+    const alias = generateScopedName(name, input.from, input.css);
+    aliases[name] = alias;
+    return alias;
+  };
   walkRules(css, rule => {
     try {
       rule.selector = localizeSelectors(
         rule.selector,
-        options.mode === "global" ? "global" : "local"
+        options.mode === "global" ? "global" : "local",
+        getAlias
       );
     } catch (e) {
       throw rule.error(e.message);
     }
   });
+  css.prepend(
+    createICSSRules(icssImports, Object.assign({}, icssExports, aliases))
+  );
 });
