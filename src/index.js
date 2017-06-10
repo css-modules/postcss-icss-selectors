@@ -122,11 +122,31 @@ const getMessages = aliases =>
     .map(name => ({ plugin, type: "icss-scoped", name, value: aliases[name] }))
     .reduce((acc, msg) => [...acc, msg], []);
 
+const getContract = (result, type, prop, value) =>
+  result.messages
+    .filter(msg => msg.type === type)
+    .reduce(
+      (acc, msg) => Object.assign({}, acc, { [msg[prop]]: msg[value] }),
+      {}
+    );
+
+const composeAliases = (aliases, composed) =>
+  Object.keys(aliases).reduce(
+    (acc, name) =>
+      Object.assign({}, acc, {
+        [name]: aliases[name] + (composed[name] ? ` ${composed[name]}` : "")
+      }),
+    {}
+  );
+
 module.exports = postcss.plugin(plugin, (options = {}) => (css, result) => {
   const generateScopedName =
     options.generateScopedName ||
     genericNames("[name]__[local]---[hash:base64:5]");
   const input = (css && css.source && css.source.input) || {};
+  const icssScoped = getContract(result, "icss-scoped", "name", "value");
+  const icssComposed = getContract(result, "icss-composed", "name", "value");
+  const icssValue = getContract(result, "icss-value", "value", "name");
   const aliases = {};
   walkRules(css, rule => {
     const getAlias = name => {
@@ -134,20 +154,12 @@ module.exports = postcss.plugin(plugin, (options = {}) => (css, result) => {
         return aliases[name];
       }
       // icss-value contract
-      if (
-        result.messages.find(
-          msg => msg.type === "icss-value" && msg.value === name
-        )
-      ) {
+      if (icssValue[name]) {
         return name;
       }
       const alias = generateScopedName(name, input.from, input.css);
       // icss-scoped contract
-      if (
-        result.messages.find(
-          msg => msg.type === "icss-scoped" && msg.name === name
-        )
-      ) {
+      if (icssScoped[name]) {
         result.warn(`'${name}' already declared`, { node: rule });
       }
       aliases[name] = alias;
@@ -163,14 +175,7 @@ module.exports = postcss.plugin(plugin, (options = {}) => (css, result) => {
       throw rule.error(e.message);
     }
   });
-  // icss-composed contract
-  const composedAliases = Object.keys(aliases).reduce((acc, name) => {
-    const composedMsg = result.messages.find(
-      msg => msg.type === "icss-composed" && msg.name === name
-    );
-    acc[name] = aliases[name] + (composedMsg ? ` ${composedMsg.value}` : "");
-    return acc;
-  }, {});
   result.messages.push(...getMessages(aliases));
-  addExports(css, composedAliases);
+  // icss-composed contract
+  addExports(css, composeAliases(aliases, icssComposed));
 });
