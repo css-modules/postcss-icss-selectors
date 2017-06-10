@@ -117,18 +117,42 @@ const addExports = (css, aliases) => {
   css.prepend(createICSSRules(icssImports, exports));
 };
 
-module.exports = postcss.plugin(plugin, (options = {}) => css => {
+const getMessages = aliases =>
+  Object.keys(aliases)
+    .map(name => ({ plugin, type: "icss-scoped", name, value: aliases[name] }))
+    .reduce((acc, msg) => [...acc, msg], []);
+
+module.exports = postcss.plugin(plugin, (options = {}) => (css, result) => {
   const generateScopedName =
     options.generateScopedName ||
     genericNames("[name]__[local]---[hash:base64:5]");
   const input = (css && css.source && css.source.input) || {};
   const aliases = {};
-  const getAlias = name => {
-    const alias = generateScopedName(name, input.from, input.css);
-    aliases[name] = alias;
-    return alias;
-  };
   walkRules(css, rule => {
+    const getAlias = name => {
+      if (aliases[name]) {
+        return aliases[name];
+      }
+      // icss-value contract
+      if (
+        result.messages.find(
+          msg => msg.type === "icss-value" && msg.value === name
+        )
+      ) {
+        return name;
+      }
+      const alias = generateScopedName(name, input.from, input.css);
+      // icss-scoped contract
+      if (
+        result.messages.find(
+          msg => msg.type === "icss-scoped" && msg.name === name
+        )
+      ) {
+        result.warn(`'${name}' already declared`, { node: rule });
+      }
+      aliases[name] = alias;
+      return alias;
+    };
     try {
       rule.selector = localizeSelectors(
         rule.selector,
@@ -139,5 +163,14 @@ module.exports = postcss.plugin(plugin, (options = {}) => css => {
       throw rule.error(e.message);
     }
   });
-  addExports(css, aliases);
+  // icss-composed contract
+  const composedAliases = Object.keys(aliases).reduce((acc, name) => {
+    const composedMsg = result.messages.find(
+      msg => msg.type === "icss-composed" && msg.name === name
+    );
+    acc[name] = aliases[name] + (composedMsg ? ` ${composedMsg.value}` : "");
+    return acc;
+  }, {});
+  result.messages.push(...getMessages(aliases));
+  addExports(css, composedAliases);
 });

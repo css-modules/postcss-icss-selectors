@@ -3,15 +3,14 @@ import postcss from "postcss";
 import stripIndent from "strip-indent";
 import plugin from "../src";
 
-const strip = input =>
-  stripIndent(input).replace(/^\n/, "").replace(/\s+$/, "");
+const strip = input => stripIndent(input).trim();
 const compile = (input, options) =>
   postcss([plugin(options)])
     .process(input, options)
     .catch(e => Promise.reject(e.message));
 const generateScopedName = name => `__scope__${name}`;
-const messagesPlugin = messages => () => (css, result) => {
-  result.push(...messages);
+const messagesPlugin = messages => (css, result) => {
+  result.messages.push(...messages);
 };
 
 const runCSS = ({ fixture, expected, options }) => {
@@ -29,14 +28,25 @@ const runError = ({ fixture, error, options }) => {
   );
 };
 
-const runMessages = ({ fixture, inputMessages, outputMessages, expected }) => {
+const runMessages = ({
+  fixture,
+  inputMessages = [],
+  outputMessages,
+  warnings = [],
+  expected
+}) => {
   const processor = postcss([
     messagesPlugin(inputMessages),
     plugin({ generateScopedName })
   ]).process(strip(fixture));
   return processor.then(result => {
-    expect(result.messages).toEqual(outputMessages);
-    expect(result.css).toEqual(strip(expected));
+    expect(result.messages.filter(msg => msg.type !== "warning")).toEqual(
+      outputMessages
+    );
+    expect(result.warnings().map(msg => msg.text)).toEqual(warnings);
+    if (expected) {
+      expect(result.css).toEqual(strip(expected));
+    }
   });
 };
 
@@ -718,6 +728,7 @@ test("icss-scoped contract", () => {
       }
       .foo {}
       .bar {}
+      .foo {}
     `,
     expected: `
       :export {
@@ -726,14 +737,11 @@ test("icss-scoped contract", () => {
       }
       .__scope__foo {}
       .__scope__bar {}
+      .__scope__foo {}
     `,
+    inputMessages,
     outputMessages: [
       ...inputMessages,
-      {
-        plugin: "postcss-icss-selectors",
-        type: "warning",
-        text: `'foo' already declared by 'previous-plugin'`
-      },
       {
         plugin: "postcss-icss-selectors",
         type: "icss-scoped",
@@ -746,7 +754,8 @@ test("icss-scoped contract", () => {
         name: "bar",
         value: "__scope__bar"
       }
-    ]
+    ],
+    warnings: [`'foo' already declared`]
   });
 });
 
@@ -778,8 +787,8 @@ test("icss-composed contract", () => {
     expected: `
       :export {
         foo: __scope__foo __compose__foo;
-        bar: __scope__bar __compose__bar;
-        baz: __scope__baz
+        baz: __scope__baz;
+        bar: __scope__bar __compose__bar
       }
       .__scope__foo {}
       .__scope__bar {}
