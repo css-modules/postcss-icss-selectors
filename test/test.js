@@ -765,7 +765,13 @@ test("icss-composed contract", () => {
       plugin: "previous-plugin",
       type: "icss-composed",
       name: "foo",
-      value: "__compose__foo"
+      value: "__compose__foo1"
+    },
+    {
+      plugin: "previous-plugin",
+      type: "icss-composed",
+      name: "foo",
+      value: "__compose__foo2"
     },
     {
       plugin: "previous-plugin",
@@ -786,7 +792,7 @@ test("icss-composed contract", () => {
     `,
     expected: `
       :export {
-        foo: __scope__foo __compose__foo;
+        foo: __scope__foo __compose__foo1 __compose__foo2;
         baz: __scope__baz;
         bar: __scope__bar __compose__bar
       }
