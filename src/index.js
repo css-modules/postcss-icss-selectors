@@ -122,13 +122,11 @@ const getMessages = aliases =>
     .map(name => ({ plugin, type: "icss-scoped", name, value: aliases[name] }))
     .reduce((acc, msg) => [...acc, msg], []);
 
-const getContract = (result, type, prop, value) =>
-  result.messages
-    .filter(msg => msg.type === type)
-    .reduce(
-      (acc, msg) => Object.assign({}, acc, { [msg[prop]]: msg[value] }),
-      {}
-    );
+const isValue = (messages, name) =>
+  messages.find(msg => msg.type === "icss-value" && msg.value === name);
+
+const isRedeclared = (messages, name) =>
+  messages.find(msg => msg.type === "icss-scoped" && msg.name === name);
 
 const getComposed = (messages, name) =>
   messages
@@ -149,8 +147,6 @@ module.exports = postcss.plugin(plugin, (options = {}) => (css, result) => {
     options.generateScopedName ||
     genericNames("[name]__[local]---[hash:base64:5]");
   const input = (css && css.source && css.source.input) || {};
-  const icssScoped = getContract(result, "icss-scoped", "name", "value");
-  const icssValue = getContract(result, "icss-value", "value", "name");
   const aliases = {};
   walkRules(css, rule => {
     const getAlias = name => {
@@ -158,12 +154,12 @@ module.exports = postcss.plugin(plugin, (options = {}) => (css, result) => {
         return aliases[name];
       }
       // icss-value contract
-      if (icssValue[name]) {
+      if (isValue(result.messages, name)) {
         return name;
       }
       const alias = generateScopedName(name, input.from, input.css);
       // icss-scoped contract
-      if (icssScoped[name]) {
+      if (isRedeclared(result.messages, name)) {
         result.warn(`'${name}' already declared`, { node: rule });
       }
       aliases[name] = alias;
