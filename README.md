@@ -4,7 +4,7 @@
 [travis-img]: https://travis-ci.org/css-modules/postcss-icss-selectors.svg
 [travis]: https://travis-ci.org/css-modules/postcss-icss-selectors
 
-PostCSS plugin for css modules to to local-scope classes and ids
+PostCSS plugin for css modules to local-scope classes and ids
 
 ## Usage
 
