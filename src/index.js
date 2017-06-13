@@ -128,16 +128,24 @@ const isValue = (messages, name) =>
 const isRedeclared = (messages, name) =>
   messages.find(msg => msg.type === "icss-scoped" && msg.name === name);
 
-const getComposed = (messages, name) =>
-  messages
-    .filter(msg => msg.type === "icss-composed" && msg.name === name)
-    .map(msg => msg.value);
+const flatten = array => array.reduce((acc, item) => [...acc, ...item], []);
+
+const getComposed = (name, messages, root) => [
+  name,
+  ...flatten(
+    messages
+      .filter(msg => msg.name === name && msg.value !== root)
+      .map(msg => getComposed(msg.value, messages, root))
+  )
+];
 
 const composeAliases = (aliases, messages) =>
   Object.keys(aliases).reduce(
     (acc, name) =>
       Object.assign({}, acc, {
-        [name]: [aliases[name], ...getComposed(messages, name)].join(" ")
+        [name]: getComposed(name, messages, name)
+          .map(value => aliases[value] || value)
+          .join(" ")
       }),
     {}
   );
@@ -147,6 +155,9 @@ module.exports = postcss.plugin(plugin, (options = {}) => (css, result) => {
     options.generateScopedName ||
     genericNames("[name]__[local]---[hash:base64:5]");
   const input = (css && css.source && css.source.input) || {};
+  const composedMessages = result.messages.filter(
+    msg => msg.type === "icss-composed"
+  );
   const aliases = {};
   walkRules(css, rule => {
     const getAlias = name => {
@@ -177,5 +188,5 @@ module.exports = postcss.plugin(plugin, (options = {}) => (css, result) => {
   });
   result.messages.push(...getMessages(aliases));
   // icss-composed contract
-  addExports(css, composeAliases(aliases, result.messages));
+  addExports(css, composeAliases(aliases, composedMessages));
 });

@@ -761,24 +761,9 @@ test("icss-scoped contract", () => {
 
 test("icss-composed contract", () => {
   const inputMessages = [
-    {
-      plugin: "previous-plugin",
-      type: "icss-composed",
-      name: "foo",
-      value: "__compose__foo1"
-    },
-    {
-      plugin: "previous-plugin",
-      type: "icss-composed",
-      name: "foo",
-      value: "__compose__foo2"
-    },
-    {
-      plugin: "previous-plugin",
-      type: "icss-composed",
-      name: "bar",
-      value: "__compose__bar"
-    }
+    { type: "icss-composed", name: "foo", value: "__compose__foo1" },
+    { type: "icss-composed", name: "foo", value: "__compose__foo2" },
+    { type: "icss-composed", name: "bar", value: "__compose__bar" }
   ];
   return runMessages({
     fixture: `
@@ -820,6 +805,109 @@ test("icss-composed contract", () => {
         type: "icss-scoped",
         name: "baz",
         value: "__scope__baz"
+      }
+    ]
+  });
+});
+
+test("icss-composed contract with local dependencies", () => {
+  const inputMessages = [
+    { type: "icss-composed", name: "bar", value: "foo" },
+    { type: "icss-composed", name: "tar", value: "baz" },
+    { type: "icss-composed", name: "doo", value: "bar" },
+    { type: "icss-composed", name: "doo", value: "tar" }
+  ];
+  return runMessages({
+    fixture: `
+      .foo {}
+      .bar {}
+      .baz {}
+      .tar {}
+      .doo {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo;
+        bar: __scope__bar __scope__foo;
+        baz: __scope__baz;
+        tar: __scope__tar __scope__baz;
+        doo: __scope__doo __scope__bar __scope__foo __scope__tar __scope__baz
+      }
+      .__scope__foo {}
+      .__scope__bar {}
+      .__scope__baz {}
+      .__scope__tar {}
+      .__scope__doo {}
+    `,
+    inputMessages,
+    outputMessages: [
+      ...inputMessages,
+      {
+        plugin: "postcss-icss-selectors",
+        type: "icss-scoped",
+        name: "foo",
+        value: "__scope__foo"
+      },
+      {
+        plugin: "postcss-icss-selectors",
+        type: "icss-scoped",
+        name: "bar",
+        value: "__scope__bar"
+      },
+      {
+        plugin: "postcss-icss-selectors",
+        type: "icss-scoped",
+        name: "baz",
+        value: "__scope__baz"
+      },
+      {
+        plugin: "postcss-icss-selectors",
+        type: "icss-scoped",
+        name: "tar",
+        value: "__scope__tar"
+      },
+      {
+        plugin: "postcss-icss-selectors",
+        type: "icss-scoped",
+        name: "doo",
+        value: "__scope__doo"
+      }
+    ]
+  });
+});
+
+test("icss-composed contract with recursive local composition", () => {
+  const inputMessages = [
+    { type: "icss-composed", name: "foo", value: "bar" },
+    { type: "icss-composed", name: "bar", value: "foo" }
+  ];
+  return runMessages({
+    fixture: `
+      .foo {}
+      .bar {}
+    `,
+    expected: `
+      :export {
+        foo: __scope__foo __scope__bar;
+        bar: __scope__bar __scope__foo
+      }
+      .__scope__foo {}
+      .__scope__bar {}
+    `,
+    inputMessages,
+    outputMessages: [
+      ...inputMessages,
+      {
+        plugin: "postcss-icss-selectors",
+        type: "icss-scoped",
+        name: "foo",
+        value: "__scope__foo"
+      },
+      {
+        plugin: "postcss-icss-selectors",
+        type: "icss-scoped",
+        name: "bar",
+        value: "__scope__bar"
       }
     ]
   });
