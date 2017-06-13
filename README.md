@@ -4,7 +4,7 @@
 [travis-img]: https://travis-ci.org/css-modules/postcss-icss-selectors.svg
 [travis]: https://travis-ci.org/css-modules/postcss-icss-selectors
 
-PostCSS plugin for css modules to to local-scope classes and ids
+PostCSS plugin for css modules to local-scope classes and ids
 
 ## Usage
 
@@ -70,6 +70,18 @@ In global mode
 Converts every new local name in #id or .class defintion to global alias.
 By default returns `[name]__[local]---[hash:base64:5]`.
 
+### Messages
+
+postcss-icss-selectors passes result.messages for each local-scoped class or id
+
+```
+{
+  plugin: 'postcss-icss-selectors',
+  type: 'icss-scoped',
+  name: string, // local-scoped identifier
+  value: string // generated global identifier
+}
+```
 
 ## License
 
