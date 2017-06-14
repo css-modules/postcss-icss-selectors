@@ -675,7 +675,7 @@ test("save :import statemtents", () => {
       }
     `,
     expected: `
-      :import("~/lol.css") {
+      :import('~/lol.css') {
         foo: __foo
       }
     `
