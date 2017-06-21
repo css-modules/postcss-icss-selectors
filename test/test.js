@@ -40,15 +40,22 @@ const runMessages = ({
     plugin({ generateScopedName })
   ]).process(strip(fixture));
   return processor.then(result => {
-    expect(result.messages.filter(msg => msg.type !== "warning")).toEqual(
-      outputMessages
-    );
-    expect(result.warnings().map(msg => msg.text)).toEqual(warnings);
     if (expected) {
       expect(result.css).toEqual(strip(expected));
     }
+    expect(result.warnings().map(msg => msg.text)).toEqual(warnings);
+    expect(result.messages.filter(msg => msg.type !== "warning")).toEqual(
+      outputMessages
+    );
   });
 };
+
+const getMsg = (name, value) => ({
+  plugin: "postcss-icss-selectors",
+  type: "icss-scoped",
+  name,
+  value
+});
 
 test("scope selectors", () => {
   return runCSS({
@@ -788,24 +795,9 @@ test("icss-composed contract", () => {
     inputMessages,
     outputMessages: [
       ...inputMessages,
-      {
-        plugin: "postcss-icss-selectors",
-        type: "icss-scoped",
-        name: "foo",
-        value: "__scope__foo"
-      },
-      {
-        plugin: "postcss-icss-selectors",
-        type: "icss-scoped",
-        name: "bar",
-        value: "__scope__bar"
-      },
-      {
-        plugin: "postcss-icss-selectors",
-        type: "icss-scoped",
-        name: "baz",
-        value: "__scope__baz"
-      }
+      getMsg("foo", "__scope__foo"),
+      getMsg("bar", "__scope__bar"),
+      getMsg("baz", "__scope__baz")
     ]
   });
 });
@@ -842,36 +834,11 @@ test("icss-composed contract with local dependencies", () => {
     inputMessages,
     outputMessages: [
       ...inputMessages,
-      {
-        plugin: "postcss-icss-selectors",
-        type: "icss-scoped",
-        name: "foo",
-        value: "__scope__foo"
-      },
-      {
-        plugin: "postcss-icss-selectors",
-        type: "icss-scoped",
-        name: "bar",
-        value: "__scope__bar"
-      },
-      {
-        plugin: "postcss-icss-selectors",
-        type: "icss-scoped",
-        name: "baz",
-        value: "__scope__baz"
-      },
-      {
-        plugin: "postcss-icss-selectors",
-        type: "icss-scoped",
-        name: "tar",
-        value: "__scope__tar"
-      },
-      {
-        plugin: "postcss-icss-selectors",
-        type: "icss-scoped",
-        name: "doo",
-        value: "__scope__doo"
-      }
+      getMsg("foo", "__scope__foo"),
+      getMsg("bar", "__scope__bar"),
+      getMsg("baz", "__scope__baz"),
+      getMsg("tar", "__scope__tar"),
+      getMsg("doo", "__scope__doo")
     ]
   });
 });
@@ -897,36 +864,16 @@ test("icss-composed contract with recursive local composition", () => {
     inputMessages,
     outputMessages: [
       ...inputMessages,
-      {
-        plugin: "postcss-icss-selectors",
-        type: "icss-scoped",
-        name: "foo",
-        value: "__scope__foo"
-      },
-      {
-        plugin: "postcss-icss-selectors",
-        type: "icss-scoped",
-        name: "bar",
-        value: "__scope__bar"
-      }
+      getMsg("foo", "__scope__foo"),
+      getMsg("bar", "__scope__bar")
     ]
   });
 });
 
 test("icss-value contract", () => {
   const inputMessages = [
-    {
-      plugin: "previous-plugin",
-      type: "icss-value",
-      name: "foo",
-      value: "__declared__foo"
-    },
-    {
-      plugin: "previous-plugin",
-      type: "icss-value",
-      name: "bar",
-      value: "__declared__bar"
-    }
+    { type: "icss-value", name: "foo", value: "__declared__foo" },
+    { type: "icss-value", name: "bar", value: "__declared__bar" }
   ];
   return runMessages({
     fixture: `
@@ -940,6 +887,7 @@ test("icss-value contract", () => {
     expected: `
       :export {
         foo: __declared__foo;
+        bar: __declared__bar;
         baz: __scope__baz
       }
       .__declared__foo {}
@@ -949,12 +897,45 @@ test("icss-value contract", () => {
     inputMessages,
     outputMessages: [
       ...inputMessages,
-      {
-        plugin: "postcss-icss-selectors",
-        type: "icss-scoped",
-        name: "baz",
-        value: "__scope__baz"
+      getMsg("foo", "__declared__foo"),
+      getMsg("bar", "__declared__bar"),
+      getMsg("baz", "__scope__baz")
+    ]
+  });
+});
+
+test("icss-value and icss-composed together", () => {
+  const inputMessages = [
+    { type: "icss-composed", name: "bar", value: "foo" },
+    { type: "icss-value", name: "foo", value: "__value__foo" }
+  ];
+  return runMessages({
+    fixture: `
+      :import('path') {
+        foo: __value__foo
       }
+      :export {
+        foo: __value__foo
+      }
+      .__value__foo {}
+      .bar {}
+    `,
+    expected: `
+      :import('path') {
+        foo: __value__foo
+      }
+      :export {
+        foo: __value__foo;
+        bar: __scope__bar __value__foo
+      }
+      .__value__foo {}
+      .__scope__bar {}
+    `,
+    inputMessages,
+    outputMessages: [
+      ...inputMessages,
+      getMsg("foo", "__value__foo"),
+      getMsg("bar", "__scope__bar")
     ]
   });
 });

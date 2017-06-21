@@ -3,6 +3,7 @@ import postcss from "postcss";
 import Tokenizer from "css-selector-tokenizer";
 import { extractICSS, createICSSRules } from "icss-utils";
 import genericNames from "generic-names";
+import fromPairs from "lodash/fromPairs";
 
 const plugin = "postcss-icss-selectors";
 
@@ -111,18 +112,15 @@ const walkRules = (css, callback) => {
   });
 };
 
-const addExports = (css, aliases) => {
-  const { icssImports, icssExports } = extractICSS(css);
-  const exports = Object.assign({}, icssExports, aliases);
-  css.prepend(createICSSRules(icssImports, exports));
-};
-
 const getMessages = aliases =>
-  Object.keys(aliases)
-    .map(name => ({ plugin, type: "icss-scoped", name, value: aliases[name] }))
-    .reduce((acc, msg) => [...acc, msg], []);
+  Object.keys(aliases).map(name => ({
+    plugin,
+    type: "icss-scoped",
+    name,
+    value: aliases[name]
+  }));
 
-const isValue = (messages, name) =>
+const getValue = (messages, name) =>
   messages.find(msg => msg.type === "icss-value" && msg.value === name);
 
 const isRedeclared = (messages, name) =>
@@ -150,14 +148,25 @@ const composeAliases = (aliases, messages) =>
     {}
   );
 
+const mapMessages = (messages, type) =>
+  fromPairs(
+    messages.filter(msg => msg.type === type).map(msg => [msg.name, msg.value])
+  );
+
+const composeExports = messages => {
+  const composed = messages.filter(msg => msg.type === "icss-composed");
+  const values = mapMessages(messages, "icss-value");
+  const scoped = mapMessages(messages, "icss-scoped");
+  const aliases = Object.assign({}, scoped, values);
+  return composeAliases(aliases, composed);
+};
+
 module.exports = postcss.plugin(plugin, (options = {}) => (css, result) => {
+  const { icssImports, icssExports } = extractICSS(css);
   const generateScopedName =
     options.generateScopedName ||
     genericNames("[name]__[local]---[hash:base64:5]");
   const input = (css && css.source && css.source.input) || {};
-  const composedMessages = result.messages.filter(
-    msg => msg.type === "icss-composed"
-  );
   const aliases = {};
   walkRules(css, rule => {
     const getAlias = name => {
@@ -165,15 +174,17 @@ module.exports = postcss.plugin(plugin, (options = {}) => (css, result) => {
         return aliases[name];
       }
       // icss-value contract
-      if (isValue(result.messages, name)) {
+      const valueMsg = getValue(result.messages, name);
+      if (valueMsg) {
+        aliases[valueMsg.name] = name;
         return name;
       }
       const alias = generateScopedName(name, input.from, input.css);
+      aliases[name] = alias;
       // icss-scoped contract
       if (isRedeclared(result.messages, name)) {
         result.warn(`'${name}' already declared`, { node: rule });
       }
-      aliases[name] = alias;
       return alias;
     };
     try {
@@ -187,6 +198,8 @@ module.exports = postcss.plugin(plugin, (options = {}) => (css, result) => {
     }
   });
   result.messages.push(...getMessages(aliases));
-  // icss-composed contract
-  addExports(css, composeAliases(aliases, composedMessages));
+  // contracts
+  const composedExports = composeExports(result.messages);
+  const exports = Object.assign({}, icssExports, composedExports);
+  css.prepend(createICSSRules(icssImports, exports));
 });
