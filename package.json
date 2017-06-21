@@ -1,6 +1,6 @@
 {
   "name": "postcss-icss-selectors",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "PostCSS plugin for css modules to local-scope classes and ids",
   "keywords": [
     "css-modules",
