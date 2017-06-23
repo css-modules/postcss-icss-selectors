@@ -163,6 +163,10 @@ const composeExports = messages => {
 
 module.exports = postcss.plugin(plugin, (options = {}) => (css, result) => {
   const { icssImports, icssExports } = extractICSS(css);
+  const importAliases = {};
+  Object.keys(icssImports).forEach(filename => {
+    Object.assign(importAliases, icssImports[filename]);
+  });
   const generateScopedName =
     options.generateScopedName ||
     genericNames("[name]__[local]---[hash:base64:5]");
@@ -170,6 +174,9 @@ module.exports = postcss.plugin(plugin, (options = {}) => (css, result) => {
   const aliases = {};
   walkRules(css, rule => {
     const getAlias = name => {
+      if (importAliases[name]) {
+        return name;
+      }
       if (aliases[name]) {
         return aliases[name];
       }
