@@ -939,3 +939,47 @@ test("icss-value and icss-composed together", () => {
     ]
   });
 });
+
+test("does not replace imported values", () => {
+  return runCSS({
+    fixture: `
+      :import("~/lol.css") {
+        foo: __foo
+      }
+      .bar {
+        test: foo
+      }
+    `,
+    expected: `
+      :import('~/lol.css') {
+        foo: __foo
+      }
+      :export {
+        bar: __scope__bar
+      }
+      .__scope__bar {
+        test: foo
+      }
+    `
+  });
+});
+
+test("does not replaces imported selectors", () => {
+  return runCSS({
+    fixture: `
+      :import("~/lol.css") {
+        foo: __foo
+      }
+      .test .foo {}
+    `,
+    expected: `
+      :import('~/lol.css') {
+        foo: __foo
+      }
+      :export {
+        test: __scope__test
+      }
+      .__scope__test .foo {}
+    `
+  });
+});
