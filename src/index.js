@@ -106,7 +106,7 @@ const localizeSelectors = (selectors, mode, getAlias) => {
 
 const walkRules = (css, callback) => {
   css.walkRules(rule => {
-    if (rule.parent.type !== "atrule" || !/keyframes$/.test(rule.parent.name)) {
+    if (rule.parent && rule.parent.type !== "atrule" || !/keyframes$/.test(rule.parent.name)) {
       callback(rule);
     }
   });
